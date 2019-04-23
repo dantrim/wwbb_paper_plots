@@ -113,6 +113,12 @@ def get_required_variables(region_to_plot, plot_description) :
     variables.append("trig_tight_2018")
     variables.append('mll')
     variables.append('mbb')
+    variables.append("isBB")
+    variables.append("isCC")
+    variables.append("isBC")
+    variables.append("isBL")
+    variables.append("isCL")
+    variables.append("isLL")
     return variables
 
 def get_trigger_idx(arr) :
@@ -127,8 +133,398 @@ def get_trigger_idx(arr) :
 def bounds_dict() :
 
     v = {}
-    v["NN_d_hh"] = { "srIncNoDhh" : [1, -11, 11] }
+    v["NN_d_hh"] = { "srIncNoDhh" : [1, -11, 11],
+                    "srIncNoDhhClose" : [1, 0, 12] }
+    #v["NN_d_hh"] = { "srIncNoDhh" : [-11, -5, -4, -3, 11] }
     return v
+
+def nice_names_dict() :
+
+    n = {}
+    n["NN_d_hh"] = "$d_{hh}$"
+    return n
+
+def add_labels(pad, region_name = "") :
+
+    # ATLAS label
+    size = 18
+    text = 'ATLAS'
+    opts = dict(transform = pad.transAxes)
+    opts.update( dict(va = 'top', ha = 'left') )
+    pad.text(0.05, 0.97, text, size = size, style = 'italic', weight = 'bold', **opts)
+
+    what_kind = 'Internal'
+    pad.text(0.23, 0.97, what_kind, size = size, **opts)
+
+    lumi = '140'#.5'
+    pad.text(0.047, 0.9, '$\\sqrt{s} = 13$ TeV, %s fb$^{-1}$' % lumi, size = 0.75 * size, **opts)
+
+    # region
+    pad.text(0.047, 0.83, region_name, size = 0.75 * size, **opts)
+
+def make_legend(ordered_labels, pad) :
+
+    handles, labels = pad.get_legend_handles_labels()
+    new_handles = []
+    new_labels = []
+    for l in ordered_labels :
+        for il, label in enumerate(labels) :
+            if label == l :
+                new_labels.append(l.replace("SIG",""))
+                new_handles.append(handles[il])
+
+#    leg_x, leg_y = 0.5, 0.70
+    leg_x, leg_y = 0.45, 0.75
+    if len(ordered_labels) > 10 :
+        leg_y = 0.95 * leg_y
+    pad.legend(new_handles,
+                new_labels,
+                loc = (leg_x, leg_y),
+                frameon = False,
+                ncol = 2,
+                fontsize = 12,
+                numpoints = 1,
+                labelspacing = 0.2,
+                columnspacing = 0.4)
+
+    return leg_x, leg_y
+
+def make_paper_plot(region, backgrounds, signals, data, plot_description, args) :
+
+    histograms_bkg = {}
+    labels_bkg = {}
+    colors_bkg = {}
+    top_bkg = ["ttbar", "wt"]
+    other_bkg = ["zjetslf", "diboson"]
+    labels_bkg["other"] = "Other"
+    colors_bkg["other"] = "g"
+    labels_bkg["top"] = "Top"
+    colors_bkg["top"] = "#057390"
+
+    x_bounds = bounds_dict()[plot_description.var_to_plot][region.name]
+    is_variable_width = len(x_bounds) > 3
+    bin_width = x_bounds[0]
+    hatch_bin_width = 1.0 * bin_width
+    x_lo = x_bounds[1]
+    x_hi = x_bounds[2]
+    if is_variable_width :
+        x_lo = x_bounds[0]
+        x_hi = x_bounds[-1]
+        hatch_bin_width = 1.0 * np.array(x_bounds)[1:] - 1.0 * np.array(x_bounds)[0:-1]
+
+    ##
+    ## Fill background histograms
+    ##
+
+    h_other = histogram1d("histo_other", binning = x_bounds)
+    h_top = histogram1d("histo_top", binning = x_bounds)
+    for ibkg, bkg in enumerate(backgrounds) :
+
+        # initialize the histogram
+        h = histogram1d("histo_%s" % (bkg.name), binning = x_bounds)
+        if bkg.name.lower() not in other_bkg :
+            labels_bkg[bkg.name] = bkg.displayname
+            colors_bkg[bkg.name] = bkg.color
+
+        # start filling
+        chain = bkg.chain()
+        weight_str = "eventweight_multi"
+        for ic, c in enumerate(chain) :
+
+            # project out flavor component of Z+jets
+            if "zjets" in bkg.name.lower() :
+                print "zjets size before: %d" % c.size
+                is_bb = c["isBB"]
+                is_cc = c["isCC"]
+                is_bc = c["isBC"]
+                is_bl = c["isBL"]
+                is_cl = c["isCL"]
+                is_ll = c["isLL"]
+                if "hf" in bkg.name.lower() :
+                    idx_hf = (is_bb == 1) | (is_cc == 1) | (is_bc == 1)
+                    c = c[idx_hf]
+                elif "lf" in bkg.name.lower() :
+                    idx_lf = (is_bl == 1) | (is_cl == 1) | (is_ll == 1)
+                    c = c[idx_lf]
+                print "zjets size after: %d" % c.size
+
+
+
+            trigger_idx = get_trigger_idx(c)
+            c = c[trigger_idx]
+            weights = c[weight_str]
+
+            if plot_description.is_abs :
+                plot_data = np.absolute(c[plot_description.var_to_plot])
+            else :
+                plot_data = c[plot_description.var_to_plot]
+
+            lumis = bkg.scalefactor * np.ones(len(plot_data))
+
+            #if "ttbar" in bkg.name.lower() and ('_multi' in weight_str and 'NoPRW' not in weight_str) :
+            #    print "******** WARNING APPLYING PRW SUMW CORRECTION FACTORS TO SAMPLES %s ********" % bkg.name
+            #    idx_a = (c['year'] == 2015) | (c['year'] == 2016)
+            #    idx_d = (c['year'] == 2017)
+            #    idx_e = (c['year'] == 2018)
+            #    lumis[idx_a] *= 0.93
+            #    lumis[idx_d] *= 0.61
+            #    lumis[idx_e] *= 1.23
+
+            #if "ttbar" in bkg.name.lower() or "wt" in bkg.name.lower() or "top" in bkg.name.lower() :
+            #    scales = np.ones(len(plot_data))
+            #    dhh = c['NN_d_hh']
+            #    sr_cut_idx = dhh > 5.45
+            #    scales[sr_cut_idx] *= 0.82
+            #    print "SCALING TTBAR IN SR ONLY"
+            #    print "SCALING TTBAR IN SR ONLY"
+            #    print "SCALING TTBAR IN SR ONLY"
+            #if "zjets" in bkg.name.lower() and "hf" in bkg.name.lower() :
+            #    scales = np.ones(len(plot_data))
+            #    dhh = c['NN_d_hh']
+            #    sr_cut_idx = dhh > 5.45
+            #    scales[sr_cut_idx] *= 1.35
+            #    print "SCALING ZJETS IN SR ONLY"
+            #    print "SCALING ZJETS IN SR ONLY"
+            #    print "SCALING ZJETS IN SR ONLY"
+            #    print "SCALING ZJETS IN SR ONLY"
+
+            weights = lumis * weights
+            if bkg.name.lower() not in other_bkg and bkg.name.lower() not in top_bkg :
+                h.fill(plot_data, weights)
+            elif bkg.name.lower() in other_bkg :
+                h_other.fill(plot_data, weights)
+            elif bkg.name.lower() in top_bkg :
+                h_top.fill(plot_data, weights)
+
+        if bkg.name.lower() not in other_bkg :
+            histograms_bkg[bkg.name] = h
+
+    histograms_bkg["other"] = h_other
+    histograms_bkg["top"] = h_top
+
+    add_overflow = False
+    if add_overflow :
+        for bkg in backgrounds :
+            histograms_bkg[bkg.name].add_overflow()
+
+    stack = histogram_stack("bkg_stack_%s" % plot_description.var_to_plot, binning = x_bounds)
+    ordered_bkg_labels = []
+    ordered_bkg_colors = []
+    for bkg in backgrounds :
+            if bkg.name.lower() in other_bkg : continue
+            if bkg.name.lower() in top_bkg : continue
+            stack.add(histograms_bkg[bkg.name])
+    stack.add(histograms_bkg["other"])
+    stack.add(histograms_bkg["top"])
+    stack.sort(reverse = True)
+    for bkg_name in stack.order :
+        name = bkg_name.replace("histo_", "")
+        name = name.split("_")[0]
+        ordered_bkg_labels.append(labels_bkg[name])
+        ordered_bkg_colors.append(colors_bkg[name])
+
+    ##
+    ## Fill data histogram
+    ##
+
+    h_data = histogram1d("histo_data_%s" % plot_description.var_to_plot, binning = x_bounds)
+    chain = data.chain()
+    for idc, dc in enumerate(chain) :
+        trigger_idx = get_trigger_idx(dc)
+        dc = dc[trigger_idx]
+        if plot_description.is_abs :
+            plot_data = np.absolute(dc[plot_description.var_to_plot])
+        else :
+            plot_data = dc[plot_description.var_to_plot]
+        h_data.fill(plot_data)
+    if add_overflow :
+        h_data.add_overflow()
+
+    ##
+    ## start drawing
+    ##
+
+    canvas = ratio_canvas("ratio_canvas_%s" % plot_description.var_to_plot, logy = args.logy)
+    x_label = nice_names_dict()[plot_description.var_to_plot]
+    y_label = "Events"
+    canvas.labels = [x_label, y_label]
+    canvas.x_bounds = [x_lo, x_hi]
+    canvas.build()
+
+    upper_pad = canvas.upper_pad
+    lower_pad = canvas.lower_pad
+
+    
+    if not is_variable_width :
+        ticks = list(np.arange(x_lo, x_hi + bin_width, bin_width))
+        ticks_plot = ticks
+        if len(ticks) > 10 :
+            ticks_plot = ticks[::2]
+        upper_pad.set_xticks(ticks_plot)
+        lower_pad.set_xticks(ticks_plot)
+    else :
+        ticks = x_bounds
+
+    histo_total = stack.total_histo
+    maxy = histo_total.maximum()
+    miny = 0.0
+    if args.logy :
+        miny = 1e-2
+    multiplier = 1.75
+    if len(signals) :
+        multiplier = 1.8
+    if args.logy :
+        multiplier = 1e4
+    maxy = multiplier * maxy
+    print "maxy = %.2f" % maxy
+    upper_pad.set_ylim(miny, maxy)
+
+    # stat error
+    sm_x_error = np.zeros(len(histo_total.y_error()))
+    sm_y_error = histo_total.y_error()
+    stat_error_band = errorbars.error_hatches(histo_total.bins[:-1], histo_total.histogram, \
+            sm_x_error, sm_y_error, hatch_bin_width)
+
+    # total SM line
+    sm_line = histo_total.bounding_line()
+
+    # print yields
+    stack.print_counts()
+    histos = []
+    weights = []
+    for name in stack.order :
+        for h in stack.histograms :
+            if name != h.name.replace("hist_", "") : continue
+            histos.append(h.data)
+            weights.append(h.weights)
+    bin_vals = ticks
+    if is_variable_width :
+        bin_vals = x_bounds
+    upper_pad.hist( histos,
+                    weights = weights,
+                    bins = bin_vals,
+                    color = ordered_bkg_colors,
+                    label = ordered_bkg_labels,
+                    stacked = True,
+                    histtype = "stepfilled",
+                    lw = 1,
+                    edgecolor = "k",
+                    alpha = 1.0
+    )
+
+    # print yields
+    sm_total_yield = histo_total.integral()
+    print 30 * "*"
+    print histo_total.count_str(name = "Total SM")
+
+    # draw error band
+    upper_pad.add_collection(stat_error_band)
+
+    # draw total SM
+    upper_pad.plot(sm_line[0], sm_line[1], ls = "-", color = "k", label = "Total SM", lw = 2)
+
+    # draw data
+    if not is_variable_width :
+        data_x = np.array(h_data.bin_centers())
+    else :
+        x_left_edges = 1.0 * np.array(x_bounds[:-1])
+        x_left_edges += 0.5 * hatch_bin_width
+        data_x = x_left_edges
+    data_y = h_data.histogram
+    data_y[data_y == 0.] = -5
+    upper_pad.plot(data_x, data_y, "ko", label = "Data")
+
+    # poisson errors on data
+    data_err_low, data_err_high = errorbars.poisson_interval(data_y)
+    data_err_low = data_y - data_err_low
+    data_err_high = data_err_high - data_y
+    data_err = [data_err_low, data_err_high]
+    upper_pad.errorbar(data_x, data_y, yerr = data_err, fmt = "none", color = "k")
+
+    print h_data.count_str(name = "Data")
+    print " > Data / SM : %5.2f" % ( h_data.integral() / sm_total_yield )
+
+    ##
+    ## ratio
+    ##
+    lower_pad.set_yticks([0.5, 0.75, 1.0, 1.25, 1.5])
+    lower_pad.set_ylim([0.5, 1.5])
+
+    pred_y = histo_total.histogram
+    ratio_y = h_data.divide(histo_total)
+    ratio_y[ ratio_y == 0. ] = -1
+    ratio_x = np.array(h_data.bin_centers())
+
+    ratio_data_err_low = -1 * np.ones(len(ratio_y))
+    ratio_data_err_high = -1 * np.ones(len(ratio_y))
+    for idata, d in enumerate(ratio_y) :
+        prediction = pred_y[idata]
+        if ratio_y[idata] == 0.0 or ratio_y[idata] < 0 :
+            ratio_data_err_low[idata] = 0
+            ratio_data_err_high[idata] = 0
+        else :
+            ratio_data_err_low[idata] = data_err_low[idata] / prediction
+            ratio_data_err_high[idata] = data_err_high[idata] / prediction
+    lower_pad.plot(ratio_x, ratio_y, "ko", zorder = 1000)
+    yerr = [ratio_data_err_low, ratio_data_err_high]
+    lower_pad.errorbar(ratio_x, ratio_y, yerr = yerr, fmt = "none", color = "k")
+
+    ##
+    ## SM error on ratio
+    ##
+    sm_ratio_err = []
+    for ism, sm in enumerate(pred_y) :
+        sm_y_error_ratio = sm_y_error[ism]
+        relative_error = 0.0
+        if sm != 0 :
+            relative_error = float(sm_y_error_ratio) / float(sm)
+        if ratio_y[ism] == 0 :
+            relative_error = 0
+        sm_ratio_err.append(relative_error)
+    sm_x_error_ratio = [bin_width for a in ratio_x]
+    if is_variable_width :
+        sm_x_error_ratio = []
+        for ix, a in enumerate(ratio_x) :
+            sm_x_error_ratio.append( hatch_bin_width[ix] )
+    ratio_error_band = errorbars.error_hatches(
+        [xv - 0.5 * bin_width for xv in ratio_x],
+        np.ones(len(ratio_y)),
+        sm_x_error_ratio,
+        sm_ratio_err,
+        hatch_bin_width
+    )
+    lower_pad.add_collection(ratio_error_band)
+
+    # line at unity
+    lower_pad.plot([x_lo, x_hi], [1.0, 1.0], 'r--', lw = 1, alpha = 0.5)
+    
+
+    ##
+    ## legend
+    ##
+    legend_order = ["Data"]
+    legend_order += ["Total SM"]
+    legend_order += ordered_bkg_labels[::-1]
+    leg_x, leg_y = make_legend(legend_order, upper_pad)
+
+    ##
+    ## labels
+    ##
+    add_labels(upper_pad, plot_description.region_name)
+
+    ##
+    ## save
+    ##
+    output_dir = args.outdir
+    utils.mkdir_p(output_dir)
+    if not output_dir.endswith("/") :
+        output_dir += "/"
+    if args.suffix != "" :
+        args.suffix = "_" + args.suffix
+    save_name = output_dir + "%s_%s%s.pdf" % (plot_description.region_name, plot_description.var_to_plot, args.suffix)
+    print " >>> Saving: %s" % os.path.abspath(save_name)
+    canvas.fig.savefig(save_name, bbox_inches = "tight", dpi = 200)
+    
 
 def main() :
 
@@ -145,12 +541,24 @@ def main() :
     parser.add_argument("--cache-dir", default = "./sample_cache",
         help = "Directory to place/look for the cached-samples"
     )
+    parser.add_argument("--logy", default = False, action = "store_true",
+        help = "Make plot have log y-scale"
+    )
+    parser.add_argument("--outdir", default = "./",
+        help = "Provide an output directory to dump plots"
+    )
     args = parser.parse_args()
 
     if not utils.file_exists(args.config) :
         sys.exit()
 
     plot_desc = PlotDescription(args.plot)
+    if plot_desc.var_to_plot not in bounds_dict() :
+        print "ERROR Requested variable (=%s) not configured in bounds dict" % plot_desc.var_to_plot
+        sys.exit()
+    if plot_desc.var_to_plot not in nice_names_dict() :
+        print "ERROR Requested variable (=%s) not in configured names dict" % plot_desc.var_to_plot
+        sys.exit()
     print plot_desc
 
     global loaded_samples, loaded_regions, selected_region, loaded_plots
@@ -186,6 +594,8 @@ def main() :
     cacher.fields = required_variables
     print cacher
     cacher.cache()
+
+    make_paper_plot(region_to_plot, backgrounds, signals, data, plot_desc, args)
 
 if __name__ == "__main__" :
     main()

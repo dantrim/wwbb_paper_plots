@@ -36,16 +36,24 @@ sf_vals_wt = { '1516' : 1.00, '151617' : 1.00 }
 #top.load(filelist_dir + "topDS_mc16a", h5_dir_mc, tags = tags)
 #loaded_samples.append(top)
 
-top_sf =  1.0
-z_sf = 1.0
+top_sf =  0.85
+z_sf = 1.35
 
-top = sample.Sample("Top", "Top")
+top = sample.Sample("TTbar", "TTbar")
 top.scalefactor = lumi_factor * top_sf
 top.fillstyle = 0
 top.linestyle = "-"
 top.color = "#057390"
-top.load(filelist_dir + "top_mc16a", h5_dir_mc, tags = tags)
+top.load(filelist_dir + "ttbar_mc16a", h5_dir_mc, tags = tags)
 loaded_samples.append(top)
+
+wt = sample.Sample("Wt", "Wt")
+wt.scalefactor = lumi_factor * top_sf
+wt.fillstyle = 0
+wt.linestyle = "-"
+wt.color = "#057390"
+wt.load(filelist_dir + "WtPP8_mc16a", h5_dir_mc, tags = tags)
+loaded_samples.append(wt)
 
 zhf = sample.Sample("ZjetsHF", "$Z/\\gamma*$+jets HF")
 zhf.scalefactor = lumi_factor * z_sf
@@ -56,7 +64,7 @@ zhf.load(filelist_dir + "zjets_and_dy_sherpa_mc16a", h5_dir_mc, tags = tags)
 loaded_samples.append(zhf)
 
 zlf = sample.Sample("ZjetsLF", "$Z/\\gamma*$+jets LF")
-zlf.scalefactor = lumi_factor
+zlf.scalefactor = lumi_factor * z_sf
 zlf.fillstyle = 0
 zlf.linestyle = "-"
 zlf.color = "#fc8f1a"
@@ -120,4 +128,8 @@ trigger = "( ( year == 2015 && trig_tight_2015 == 1 ) || ( year == 2016 && trig_
 
 r = region.Region("srIncNoDhh", "srIncNoDhh")
 r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140"
+loaded_regions.append(r)
+
+r = region.Region("srIncNoDhhClose", "srIncNoDhhClose")
+r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && NN_d_hh>0"
 loaded_regions.append(r)
