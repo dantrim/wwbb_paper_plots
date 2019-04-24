@@ -133,10 +133,37 @@ def get_trigger_idx(arr) :
 def bounds_dict() :
 
     v = {}
+    sr_sf_cut_bins = np.arange(5.45, 12+0.45, 0.45)
     v["NN_d_hh"] = { "srIncNoDhh" : [1, -11, 11],
-                    "srIncNoDhhClose" : [1, 0, 12] }
+                    "srIncNoDhhClose" : [1, 0, 12],
+                    "srSFNoDhhClose" : [0.45, 5.45, 12],
+                    "srDFNoDhhClose" : [0.5, 4, 9],
+                    #"srSFNoDhhCloseCut" : [5.45, 7, 8, 9, 10, 11, 12], #, 6.5, 7, 7.5, 8, 9, 10, 11, 12], #, 5.45, 12], #sr_sf_cut_bins,
+                    #"srSFNoDhhCloseCut" : [5.45, 5.90, 6.35, 7, 8, 10, 12], #, 8.15, 8.60, 9.05],
+                    "srSFNoDhhCloseCut" : [1, 5.5, 11.5],
+                    "srDFNoDhhCloseCut" : [1, 5.5, 9.5],
+                    "crTopNoDhh" : [1, -12, 12],
+                    "crTop" : [1, 4.5, 12.5],
+                    "crZNoDhh" : [1, -12, 12],
+                    "crZ" : [1, 0, 8],
+    }
     #v["NN_d_hh"] = { "srIncNoDhh" : [-11, -5, -4, -3, 11] }
     return v
+
+def region_nice_names_dict() :
+
+    n = {}
+    n["srIncNoDhh"] = "SR, $\\ell \\ell$-inc., no $d_{hh}$"
+    n["srIncNoDhhClose"] = "SR, $\\ell \\ell$-inc., no $d_{hh}$"
+    n["srSFNoDhhClose"] = "SR-SF, no $d_{hh}$"
+    n["srDFNoDhhClose"] = "SR-DF, no $d_{hh}$"
+    n["srSFNoDhhCloseCut"] = "SR-SF"
+    n["srDFNoDhhCloseCut"] = "SR-DF"
+    n["crTopNoDhh"] = "CR-Top, no $d_{hh}$"
+    n["crTop"] = "CR-Top"
+    n["crZNoDhh"] = "CR-Z+HF, no $d_{hh}$"
+    n["crZ"] = "CR-Z+HF"
+    return n
 
 def nice_names_dict() :
 
@@ -144,25 +171,67 @@ def nice_names_dict() :
     n["NN_d_hh"] = "$d_{hh}$"
     return n
 
-def add_labels(pad, region_name = "") :
+def add_labels(pad, region_name = "", var_name = "") :
+
+
+    x_atlas = 0.04
+    y_atlas = 0.97
+    x_type_offset = 0.24
+    y_type = 0.97
+
+    x_lumi = 0.04
+    y_lumi = 0.88
+
+    x_region = 0.042
+    y_region = 0.80
+
+    if (region_name == "srSFNoDhhCloseCut" or region_name == "srDFNoDhhCloseCut") and var_name == "NN_d_hh" :
+        x_atlas = 0.29
+        y_atlas = 0.96
+
+        y_type = 0.96
+
+        x_lumi = 0.29
+        y_lumi = 0.87
+
+        x_region = 0.29
+        y_region = 0.79
+
+    if (region_name == "crZ" or region_name == "crTop") and var_name == "NN_d_hh" :
+        x_atlas = 0.33
+        y_atlas = 0.96
+        y_type = 0.96
+
+        x_lumi = 0.33
+        y_lumi = 0.88
+
+        x_region = 0.33
+        y_region = 0.8
 
     # ATLAS label
-    size = 18
+    size = 24
     text = 'ATLAS'
     opts = dict(transform = pad.transAxes)
     opts.update( dict(va = 'top', ha = 'left') )
-    pad.text(0.05, 0.97, text, size = size, style = 'italic', weight = 'bold', **opts)
+    pad.text(x_atlas, y_atlas, text, size = size, style = 'italic', weight = 'bold', **opts)
 
     what_kind = 'Internal'
-    pad.text(0.23, 0.97, what_kind, size = size, **opts)
+    pad.text(x_atlas + x_type_offset, y_type, what_kind, size = size, **opts)
 
     lumi = '140'#.5'
-    pad.text(0.047, 0.9, '$\\sqrt{s} = 13$ TeV, %s fb$^{-1}$' % lumi, size = 0.75 * size, **opts)
+    pad.text(x_lumi, y_lumi, '$\\sqrt{s} = 13$ TeV, %s fb$^{-1}$' % lumi, size = 0.75 * size, **opts)
 
     # region
-    pad.text(0.047, 0.83, region_name, size = 0.75 * size, **opts)
+    if region_name == "srIncNoDhh" and var_name == "NN_d_hh" :
+        region_text = "Selection:"
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
+        region_text = "\t%s" % region_nice_names_dict()[region_name]
+        pad.text(x_region, 0.92 * y_region, region_text, size = 0.75 * size, **opts)
+    else :
+        region_text = "Selection: %s" % region_nice_names_dict()[region_name]
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
 
-def make_legend(ordered_labels, pad) :
+def make_legend(ordered_labels, n_cols, var_name, region_name, pad) :
 
     handles, labels = pad.get_legend_handles_labels()
     new_handles = []
@@ -173,21 +242,107 @@ def make_legend(ordered_labels, pad) :
                 new_labels.append(l.replace("SIG",""))
                 new_handles.append(handles[il])
 
-#    leg_x, leg_y = 0.5, 0.70
     leg_x, leg_y = 0.45, 0.75
+    legend_fontsize = 15
+
+    if n_cols == 1 :
+        leg_x = 0.58
+        leg_y = 0.58
+
+    # sr
+    if n_cols == 2 and (region_name == "srSFNoDhhCloseCut" or region_name == "srDFNoDhhCloseCut") and var_name == "NN_d_hh" :
+        leg_x = 0.27
+        leg_y = 0.5
+        legend_fontsize = 14
+
+    # crZ
+    if n_cols == 1 and (region_name == "crZ") and var_name == "NN_d_hh" :
+        leg_x = 0.48
+        leg_y = 0.3
+        legend_fontsize = 16
+    if n_cols == 2 and (region_name == "crZ" or region_name == "crTop") and var_name == "NN_d_hh" :
+        leg_x = 0.31
+        leg_y = 0.5
+        legend_fontsize = 14
+
+
     if len(ordered_labels) > 10 :
         leg_y = 0.95 * leg_y
     pad.legend(new_handles,
                 new_labels,
                 loc = (leg_x, leg_y),
                 frameon = False,
-                ncol = 2,
-                fontsize = 12,
+                ncol = n_cols,
+                fontsize = legend_fontsize,
                 numpoints = 1,
                 labelspacing = 0.2,
                 columnspacing = 0.4)
 
     return leg_x, leg_y
+
+def colors_dict() :
+
+    palette = 3
+    colors = {}
+    colors[0] = { "other" : "#F1FAEE",
+                    "zjetshf" : "#A8DADC",
+                    "top" : "#457B9D",
+                    "singlehiggs" : "#E63946",
+                    "ttbarv" : "#1D3557" }
+    colors[1] = { "top" : "#3E6990",
+                    "zjetshf" : "#AABD8C",
+                    "ttbarv" : "#381D2A",
+                    "singlehiggs" : "#F39B6D",
+                    "other" : "#E9E3B4" }
+    colors[2] = { "top" : "#5BC0EB",
+                    "zjetshf" : "#FDE74C",
+                    "ttbarv" : "#9BC53D",
+                    "singlehiggs" : "#C3423F",
+                    "other" : "#211A1E" }
+    #colors[3] = { "top" : "#3F88C5",
+    colors[3] = { "top" : "#016FB9",
+                    "zjetshf" : "#FF9505",
+                    #"zjetshf" : "#44BBA4",
+                    "ttbarv" : "#393E41",
+                    "singlehiggs" : "#E94F37",
+                    "other" : "#44BBA4" }
+                    #"other" : "#F6F7EB" }
+                
+    return colors[palette]
+
+def get_legend_order(var_name, region_name) :
+
+    standard_order = {}
+    standard_order[1] = ["Data", "Total SM", "Top", "$Z/\\gamma*$+jets HF", "$t\\bar{t} + V$", "Higgs", "Other"]
+    standard_order[2] = ["Data", "Top", "$Z/\\gamma*$+jets HF", "$t\\bar{t} + V$", "Total SM", "Higgs", "Other"]
+
+    n_cols = {}
+    n_cols["srIncNoDhh"] = 1
+    n_cols["srIncNoDhhClose"] = 1
+    n_cols["srSFNoDhhClose"] = 1
+    n_cols["srDFNoDhhClose"] = 1
+    n_cols["srSFNoDhhCloseCut"] = 2
+    n_cols["srDFNoDhhCloseCut"] = 2
+    n_cols["crTopNoDhh"] = 1
+    n_cols["crTop"] = 2
+    n_cols["crZNoDhh"] = 1
+    n_cols["crZ"] = 2
+
+    order_dict = {}
+    order_dict["NN_d_hh"] = {
+        "srIncNoDhh" : standard_order[n_cols[region_name]],
+        "srIncNoDhhClose" : standard_order[n_cols[region_name]],
+        "srSFNoDhhClose" : standard_order[n_cols[region_name]],
+        "srDFNoDhhClose" : standard_order[n_cols[region_name]],
+        "srSFNoDhhCloseCut" : standard_order[n_cols[region_name]],
+        "srDFNoDhhCloseCut" : standard_order[n_cols[region_name]],
+        "crTopNoDhh" : standard_order[n_cols[region_name]],
+        "crTop" : standard_order[n_cols[region_name]],
+        "crZNoDhh" : standard_order[n_cols[region_name]],
+        "crZ" : standard_order[n_cols[region_name]],
+    }
+
+    return order_dict[var_name][region_name], n_cols[region_name]
 
 def make_paper_plot(region, backgrounds, signals, data, plot_description, args) :
 
@@ -200,6 +355,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     colors_bkg["other"] = "g"
     labels_bkg["top"] = "Top"
     colors_bkg["top"] = "#057390"
+
 
     x_bounds = bounds_dict()[plot_description.var_to_plot][region.name]
     is_variable_width = len(x_bounds) > 3
@@ -224,16 +380,15 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         h = histogram1d("histo_%s" % (bkg.name), binning = x_bounds)
         if bkg.name.lower() not in other_bkg :
             labels_bkg[bkg.name] = bkg.displayname
-            colors_bkg[bkg.name] = bkg.color
+            colors_bkg[bkg.name.lower()] = bkg.color
 
         # start filling
         chain = bkg.chain()
-        weight_str = "eventweight_multi"
+        weight_str = "eventweightNoPRW_multi"
         for ic, c in enumerate(chain) :
 
             # project out flavor component of Z+jets
             if "zjets" in bkg.name.lower() :
-                print "zjets size before: %d" % c.size
                 is_bb = c["isBB"]
                 is_cc = c["isCC"]
                 is_bc = c["isBC"]
@@ -246,22 +401,24 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                 elif "lf" in bkg.name.lower() :
                     idx_lf = (is_bl == 1) | (is_cl == 1) | (is_ll == 1)
                     c = c[idx_lf]
-                print "zjets size after: %d" % c.size
-
-
 
             trigger_idx = get_trigger_idx(c)
             c = c[trigger_idx]
             weights = c[weight_str]
 
+            if plot_description.region_name == "crTopNoDhh" and bkg.name.lower() == "zjetslf" :
+                #print "zlf weights: %s" % weights
+                idx_good_weight =  weights > 1e-2
+                c = c[idx_good_weight]
+                weights = weights[idx_good_weight]
+
             if plot_description.is_abs :
                 plot_data = np.absolute(c[plot_description.var_to_plot])
             else :
                 plot_data = c[plot_description.var_to_plot]
-
             lumis = bkg.scalefactor * np.ones(len(plot_data))
 
-            #if "ttbar" in bkg.name.lower() and ('_multi' in weight_str and 'NoPRW' not in weight_str) :
+            #if bkg.name.lower() == "ttbar" and ('_multi' in weight_str and 'NoPRW' not in weight_str) :
             #    print "******** WARNING APPLYING PRW SUMW CORRECTION FACTORS TO SAMPLES %s ********" % bkg.name
             #    idx_a = (c['year'] == 2015) | (c['year'] == 2016)
             #    idx_d = (c['year'] == 2017)
@@ -270,23 +427,29 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
             #    lumis[idx_d] *= 0.61
             #    lumis[idx_e] *= 1.23
 
-            #if "ttbar" in bkg.name.lower() or "wt" in bkg.name.lower() or "top" in bkg.name.lower() :
-            #    scales = np.ones(len(plot_data))
-            #    dhh = c['NN_d_hh']
-            #    sr_cut_idx = dhh > 5.45
-            #    scales[sr_cut_idx] *= 0.82
-            #    print "SCALING TTBAR IN SR ONLY"
-            #    print "SCALING TTBAR IN SR ONLY"
-            #    print "SCALING TTBAR IN SR ONLY"
-            #if "zjets" in bkg.name.lower() and "hf" in bkg.name.lower() :
-            #    scales = np.ones(len(plot_data))
-            #    dhh = c['NN_d_hh']
-            #    sr_cut_idx = dhh > 5.45
-            #    scales[sr_cut_idx] *= 1.35
-            #    print "SCALING ZJETS IN SR ONLY"
-            #    print "SCALING ZJETS IN SR ONLY"
-            #    print "SCALING ZJETS IN SR ONLY"
-            #    print "SCALING ZJETS IN SR ONLY"
+            if args.apply_sr_sf :
+                dhh_cut = 1.0
+                if plot_description.region_name == "srSFNoDhhCloseCut" :
+                    dhh_cut = 5.45
+                elif plot_description.region_name == "srDFNoDhhCloseCut" :
+                    dhh_cut = 5.55
+                elif "crz" in plot_description.region_name.lower() :
+                    dhh_cut = 0
+                elif plot_description.region_name.lower() == "crtop" :
+                    dhh_cut = 4.5
+                if bkg.name.lower() == "ttbar" or bkg.name.lower() == "wt" or "top" in bkg.name.lower() :
+                    scales = np.ones(len(plot_data))
+                    dhh = c['NN_d_hh']
+                    sr_cut_idx = dhh > dhh_cut
+                    lumis[sr_cut_idx] *= 0.79
+                    print " *** SCALING TTBAR IN SR ONLY ***"
+                    
+                if "zjets" in bkg.name.lower() and "hf" in bkg.name.lower() :
+                    scales = np.ones(len(plot_data))
+                    dhh = c['NN_d_hh']
+                    sr_cut_idx = dhh > dhh_cut
+                    lumis[sr_cut_idx] *= 1.34
+                    print " *** SCALING ZJETS IN SR ONLY ***"
 
             weights = lumis * weights
             if bkg.name.lower() not in other_bkg and bkg.name.lower() not in top_bkg :
@@ -299,13 +462,17 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         if bkg.name.lower() not in other_bkg :
             histograms_bkg[bkg.name] = h
 
+    # adjust the colors
+    for name in colors_dict() :
+        colors_bkg[name] = colors_dict()[name]
+
     histograms_bkg["other"] = h_other
     histograms_bkg["top"] = h_top
 
     add_overflow = False
     if add_overflow :
-        for bkg in backgrounds :
-            histograms_bkg[bkg.name].add_overflow()
+        for bkg in histograms_bkg :
+            histograms_bkg[bkg].add_overflow()
 
     stack = histogram_stack("bkg_stack_%s" % plot_description.var_to_plot, binning = x_bounds)
     ordered_bkg_labels = []
@@ -321,7 +488,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         name = bkg_name.replace("histo_", "")
         name = name.split("_")[0]
         ordered_bkg_labels.append(labels_bkg[name])
-        ordered_bkg_colors.append(colors_bkg[name])
+        ordered_bkg_colors.append(colors_bkg[name.lower()])
 
     ##
     ## Fill data histogram
@@ -369,14 +536,26 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     maxy = histo_total.maximum()
     miny = 0.0
     if args.logy :
-        miny = 1e-2
+        miny = 1e-1
     multiplier = 1.75
     if len(signals) :
         multiplier = 1.8
     if args.logy :
         multiplier = 1e4
+        if "srsf" in plot_description.region_name.lower() or "srdf" in plot_description.region_name.lower() :
+            multiplier = 1e2
     maxy = multiplier * maxy
     print "maxy = %.2f" % maxy
+
+    if plot_description.region_name == "srSFNoDhhCloseCut" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
+        maxy = 12
+    elif plot_description.region_name == "srDFNoDhhCloseCut" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
+        maxy = 10
+    elif plot_description.region_name == "crZ" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
+        maxy = 400
+    elif plot_description.region_name == "crTop" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
+        maxy = 70
+
     upper_pad.set_ylim(miny, maxy)
 
     # stat error
@@ -408,7 +587,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                     stacked = True,
                     histtype = "stepfilled",
                     lw = 1,
-                    edgecolor = "k",
+                    edgecolor = "none",
                     alpha = 1.0
     )
 
@@ -447,8 +626,8 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     ##
     ## ratio
     ##
-    lower_pad.set_yticks([0.5, 0.75, 1.0, 1.25, 1.5])
-    lower_pad.set_ylim([0.5, 1.5])
+    #lower_pad.set_yticks([0.5, 0.75, 1.0, 1.25, 1.5])
+    #lower_pad.set_ylim([0.5, 1.5])
 
     pred_y = histo_total.histogram
     ratio_y = h_data.divide(histo_total)
@@ -498,19 +677,21 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     # line at unity
     lower_pad.plot([x_lo, x_hi], [1.0, 1.0], 'r--', lw = 1, alpha = 0.5)
     
+    #upper_pad.get_yaxis().set_label_coords(-0.16, 1.0)
+    #lower_pad.get_yaxis().set_label_coords(-0.16, 0.5)
+    upper_pad.get_yaxis().set_label_coords(-0.11, 1.0)
+    lower_pad.get_yaxis().set_label_coords(-0.11, 0.5)
 
     ##
     ## legend
     ##
-    legend_order = ["Data"]
-    legend_order += ["Total SM"]
-    legend_order += ordered_bkg_labels[::-1]
-    leg_x, leg_y = make_legend(legend_order, upper_pad)
+    legend_order, n_cols = get_legend_order(plot_description.var_to_plot, plot_description.region_name)
+    leg_x, leg_y = make_legend(legend_order, n_cols, plot_description.var_to_plot, plot_description.region_name, upper_pad)
 
     ##
     ## labels
     ##
-    add_labels(upper_pad, plot_description.region_name)
+    add_labels(upper_pad, plot_description.region_name, plot_description.var_to_plot)
 
     ##
     ## save
@@ -546,6 +727,9 @@ def main() :
     )
     parser.add_argument("--outdir", default = "./",
         help = "Provide an output directory to dump plots"
+    )
+    parser.add_argument("--apply-sr-sf", default = False, action = "store_true",
+        help = "Apply the norm factors for Z+HF and Top in d_hh tail regions"
     )
     args = parser.parse_args()
 

@@ -27,6 +27,7 @@ sf_vals_wt = { '1516' : 1.00, '151617' : 1.00 }
 sf_vals_tt = { '1516' : 1.00, '151617' : 1.00 }
 sf_vals_wt = { '1516' : 1.00, '151617' : 1.00 }
 
+
 # backgrounds
 #top = sample.Sample("topDS", "Top (DS)")
 #top.scalefactor = lumi_factor * 0.93
@@ -36,8 +37,8 @@ sf_vals_wt = { '1516' : 1.00, '151617' : 1.00 }
 #top.load(filelist_dir + "topDS_mc16a", h5_dir_mc, tags = tags)
 #loaded_samples.append(top)
 
-top_sf =  0.85
-z_sf = 1.35
+top_sf =1.00#  0.82
+z_sf = 1.00# 1.35
 
 top = sample.Sample("TTbar", "TTbar")
 top.scalefactor = lumi_factor * top_sf
@@ -64,7 +65,7 @@ zhf.load(filelist_dir + "zjets_and_dy_sherpa_mc16a", h5_dir_mc, tags = tags)
 loaded_samples.append(zhf)
 
 zlf = sample.Sample("ZjetsLF", "$Z/\\gamma*$+jets LF")
-zlf.scalefactor = lumi_factor * z_sf
+zlf.scalefactor = lumi_factor #* z_sf
 zlf.fillstyle = 0
 zlf.linestyle = "-"
 zlf.color = "#fc8f1a"
@@ -132,4 +133,36 @@ loaded_regions.append(r)
 
 r = region.Region("srIncNoDhhClose", "srIncNoDhhClose")
 r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && NN_d_hh>0"
+loaded_regions.append(r)
+
+r = region.Region("srSFNoDhhClose", "srSFNoDhhClose")
+r.tcut = "isSF==1 && mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && NN_d_hh>0"
+loaded_regions.append(r)
+
+r = region.Region("srSFNoDhhCloseCut", "srSFNoDhhCloseCut")
+r.tcut = "isSF==1 && mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && NN_d_hh>5.45"
+loaded_regions.append(r)
+
+r = region.Region("srDFNoDhhClose", "srDFNoDhhClose")
+r.tcut = "isDF==1 && mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && NN_d_hh>0"
+loaded_regions.append(r)
+
+r = region.Region("srDFNoDhhCloseCut", "srDFNoDhhCloseCut")
+r.tcut = "isDF==1 && mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && NN_d_hh>5.55"
+loaded_regions.append(r)
+
+r = region.Region("crTopNoDhh", "crTopNoDhh")
+r.tcut = "isDF==1 && mll>20 && mll<60 && nBJets>=2 && (mbb<100 || mbb>140)"
+loaded_regions.append(r)
+
+r = region.Region("crTop", "crTopNoDhh")
+r.tcut = "isDF==1 && mll>20 && mll<60 && nBJets>=2 && (mbb<100 || mbb>140) && NN_d_hh>4.5"
+loaded_regions.append(r)
+
+r = region.Region("crZNoDhh", "crZNoDhh")
+r.tcut = "(mll>81.2 && mll<101.2) && nBJets>=2 && mbb>100 && mbb<140"
+loaded_regions.append(r)
+
+r = region.Region("crZ", "crZ")
+r.tcut = "(mll>81.2 && mll<101.2) && nBJets>=2 && mbb>100 && mbb<140 && NN_d_hh>0"
 loaded_regions.append(r)
