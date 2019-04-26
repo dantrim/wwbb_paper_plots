@@ -98,11 +98,13 @@ loaded_samples.append(ttv)
 
 hh = sample.Sample("hhWWbb", "SM $hh$ (arbitrary $\\sigma$)")
 hh.is_signal = True
-hh.scalefactor = lumi_factor * 5000#* 350
+hh.scalefactor = lumi_factor #* 40#* 350
 hh.fillstyle = 0
 hh.linestyle = '--'
-hh.color = 'r'
+#hh.color = "#E71D36"
+hh.color = "r"
 hh.load(filelist_dir + "hh_wwbb_mc16a", h5_dir_mc, tags = tags)
+loaded_samples.append(hh)
 
 #wjets = sample.Sample("WjetsFull", "$W + jets$")
 #wjets.scalefactor = lumi_factor
@@ -126,6 +128,10 @@ loaded_samples.append(data)
 # region definitions
 #############################################################
 trigger = "( ( year == 2015 && trig_tight_2015 == 1 ) || ( year == 2016 && trig_tight_2016 == 1 ) || ( year == 2017 && trig_tight_2017rand == 1 ) || ( year == 2018 && trig_tight_2018 == 1 ))" 
+
+r = region.Region("srPreSel", "srPreSel")
+r.tcut = "mll>20 && nBJets>=2 && mbb>100 && mbb<140"
+loaded_regions.append(r)
 
 r = region.Region("srIncNoDhh", "srIncNoDhh")
 r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140"

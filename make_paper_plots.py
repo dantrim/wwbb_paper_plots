@@ -135,6 +135,7 @@ def bounds_dict() :
     v = {}
     sr_sf_cut_bins = np.arange(5.45, 12+0.45, 0.45)
     v["NN_d_hh"] = { "srIncNoDhh" : [1, -11, 11],
+                        "srPreSel" : [1, -11, 11],
                     "srIncNoDhhClose" : [1, 0, 12],
                     "srSFNoDhhClose" : [0.45, 5.45, 12],
                     "srDFNoDhhClose" : [0.5, 4, 9],
@@ -143,7 +144,7 @@ def bounds_dict() :
                     "srSFNoDhhCloseCut" : [1, 5.5, 11.5],
                     "srDFNoDhhCloseCut" : [1, 5.5, 9.5],
                     "crTopNoDhh" : [1, -12, 12],
-                    "crTop" : [1, 4.5, 12.5],
+                    "crTop" : [1, 4.5, 11.5],
                     "crZNoDhh" : [1, -12, 12],
                     "crZ" : [1, 0, 8],
     }
@@ -154,6 +155,7 @@ def region_nice_names_dict() :
 
     n = {}
     n["srIncNoDhh"] = "SR, $\\ell \\ell$-inc., no $d_{hh}$"
+    n["srPreSel"] = "Pre-selection"
     n["srIncNoDhhClose"] = "SR, $\\ell \\ell$-inc., no $d_{hh}$"
     n["srSFNoDhhClose"] = "SR-SF, no $d_{hh}$"
     n["srDFNoDhhClose"] = "SR-DF, no $d_{hh}$"
@@ -477,13 +479,20 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     stack = histogram_stack("bkg_stack_%s" % plot_description.var_to_plot, binning = x_bounds)
     ordered_bkg_labels = []
     ordered_bkg_colors = []
-    for bkg in backgrounds :
-            if bkg.name.lower() in other_bkg : continue
-            if bkg.name.lower() in top_bkg : continue
-            stack.add(histograms_bkg[bkg.name])
-    stack.add(histograms_bkg["other"])
-    stack.add(histograms_bkg["top"])
-    stack.sort(reverse = True)
+    stack_order = ["top", "zjetshf", "ttbarv", "higgs", "other"]
+#    for bkg in backgrounds :
+#            if bkg.name.lower() in other_bkg : continue
+#            if bkg.name.lower() in top_bkg : continue
+#            stack.add(histograms_bkg[bkg.name])
+    #stack.add(histograms_bkg["other"])
+    for so in stack_order[::-1] :
+        for bkg_name in histograms_bkg :
+            if so in bkg_name.lower() :
+                stack.add(histograms_bkg[bkg_name])
+                break
+#    stack.add(histograms_bkg["other"])
+#    stack.add(histograms_bkg["top"])
+    #stack.sort(reverse = True)
     for bkg_name in stack.order :
         name = bkg_name.replace("histo_", "")
         name = name.split("_")[0]
@@ -513,14 +522,13 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
 
     canvas = ratio_canvas("ratio_canvas_%s" % plot_description.var_to_plot, logy = args.logy)
     x_label = nice_names_dict()[plot_description.var_to_plot]
-    y_label = "Events"
+    y_label = "Events / Bin"
     canvas.labels = [x_label, y_label]
     canvas.x_bounds = [x_lo, x_hi]
     canvas.build()
 
     upper_pad = canvas.upper_pad
     lower_pad = canvas.lower_pad
-
     
     if not is_variable_width :
         ticks = list(np.arange(x_lo, x_hi + bin_width, bin_width))
@@ -611,17 +619,56 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         data_x = x_left_edges
     data_y = h_data.histogram
     data_y[data_y == 0.] = -5
-    upper_pad.plot(data_x, data_y, "ko", label = "Data")
+    upper_pad.plot(data_x, data_y, "ko", label = "Data", zorder = 1e6)
 
     # poisson errors on data
     data_err_low, data_err_high = errorbars.poisson_interval(data_y)
     data_err_low = data_y - data_err_low
     data_err_high = data_err_high - data_y
     data_err = [data_err_low, data_err_high]
-    upper_pad.errorbar(data_x, data_y, yerr = data_err, fmt = "none", color = "k")
+    upper_pad.errorbar(data_x, data_y, yerr = data_err, fmt = "none", color = "k", zorder = 1e6)
 
     print h_data.count_str(name = "Data")
     print " > Data / SM : %5.2f" % ( h_data.integral() / sm_total_yield )
+
+    ##
+    ## signal histograms
+    ##
+    if len(signals) > 0 and "sr" in plot_description.region_name.lower() :
+        for signal in signals :
+            h = histogram1d("signal_histo_%s" % signal.name, binning = x_bounds)
+            chain = signal.chain()
+            for isc, sc in enumerate(chain) :
+                trigger_idx = get_trigger_idx(sc)
+                sc = sc[trigger_idx]
+                weights = sc[weight_str]
+
+                if plot_description.is_abs :
+                    plot_data = np.absolute(sc[plot_description.var_to_plot])
+                else :
+                    plot_data = sc[plot_description.var_to_plot]
+                lumis = signal.scalefactor * np.ones(len(plot_data))
+
+                weights = lumis * weights
+                #if "inc" in plot_description.region_name.lower() :
+                #    weights *= 50
+                h.fill(plot_data, weights)
+
+            upper_pad.hist( h.data, weights = h.weights,
+                        bins = bin_vals,
+                        color = signal.color,
+                        label = "$hh$",
+                        ls = "-",
+                        stacked = False,
+                        histtype = "step",
+                        lw = 2,
+                        zorder = 1e5
+            )
+            print 35 * "- "
+            print "hh counts"
+            print h.count_str()
+
+            
 
     ##
     ## ratio
@@ -687,6 +734,42 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     ##
     legend_order, n_cols = get_legend_order(plot_description.var_to_plot, plot_description.region_name)
     leg_x, leg_y = make_legend(legend_order, n_cols, plot_description.var_to_plot, plot_description.region_name, upper_pad)
+
+    ##
+    ## signal legend
+    ##
+    if len(signals) > 0 :
+            # add signal to legend (here we assume that there is only one signal sample provided)
+
+            # label
+            signal_label = "SM $hh \\rightarrow bb\\ell\\nu\\ell\\nu$"
+            y_text = leg_y - 0.04
+            #x_text = leg_x + 0.15
+            x_text = leg_x + 0.12
+            upper_pad.text(x_text, y_text, signal_label,
+                        transform = upper_pad.transAxes,
+                        fontsize = 14,
+                        ha = "left"
+            )
+
+            # line
+            y_line = 1.02 * y_text
+            #x_line_0 = leg_x + 0.007 
+            #x_line_1 = leg_x + 0.08
+            x_line_0 = leg_x + 0.0155
+            x_line_1 = leg_x + 0.09
+
+            if n_cols == 2 :
+                y_line = 1.02 * y_text
+                x_line_0 = leg_x + 0.016
+                x_line_1 = leg_x + 0.083
+            upper_pad.plot([x_line_0, x_line_1], [y_line, y_line],
+                    "-",
+                    lw = 2,
+                    color = signals[0].color,
+                    transform = upper_pad.transAxes
+            )
+            
 
     ##
     ## labels
