@@ -429,7 +429,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
             #    lumis[idx_d] *= 0.61
             #    lumis[idx_e] *= 1.23
 
-            if args.apply_sr_sf :
+            if args.apply_sr_sf  :
                 dhh_cut = 1.0
                 if plot_description.region_name == "srSFNoDhhCloseCut" :
                     dhh_cut = 5.45
@@ -439,6 +439,8 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                     dhh_cut = 0
                 elif plot_description.region_name.lower() == "crtop" :
                     dhh_cut = 4.5
+                elif plot_description.region_name == "srIncNoDhh" :
+                    dhh_cut = 5.45
                 if bkg.name.lower() == "ttbar" or bkg.name.lower() == "wt" or "top" in bkg.name.lower() :
                     scales = np.ones(len(plot_data))
                     dhh = c['NN_d_hh']
@@ -460,6 +462,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                 h_other.fill(plot_data, weights)
             elif bkg.name.lower() in top_bkg :
                 h_top.fill(plot_data, weights)
+                h.fill(plot_data, weights)
 
         if bkg.name.lower() not in other_bkg :
             histograms_bkg[bkg.name] = h
@@ -712,6 +715,56 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         sm_x_error_ratio = []
         for ix, a in enumerate(ratio_x) :
             sm_x_error_ratio.append( hatch_bin_width[ix] )
+
+    # syst
+    if args.add_syst and is_variable_width :
+        print "ERROR Systematics and variable bin widths are not yet implmeneted"
+        sys.exit()
+    if args.add_syst :
+        syst_config_dir = "/data/uclhc/uci/user/dantrim/n0307val/dantrimania/python/analysis/wwbb/error_band/"
+        syst_files = {}
+        if plot_description.var_to_plot == "NN_d_hh" :
+            syst_files = { "crTop" : "%s/process_uncerts_NN_d_hh_crTop_paper.json" % syst_config_dir,
+                            "crZ" : "%s/process_uncerts_NN_d_hh_crZ_paper.json" % syst_config_dir,
+                            "srIncNoDhh" : "%s/process_uncerts_NN_d_hh_srIncNoDhh_paper.json" % syst_config_dir,
+                            "srSFNoDhhCloseCut" : "%s/process_uncerts_NN_d_hh_srSFNoDhhCloseCut_paper.json" % syst_config_dir,
+                            "srDFNoDhhCloseCut" : "%s/process_uncerts_NN_d_hh_srDFNoDhhCloseCut_paper.json" % syst_config_dir
+            }
+
+        syst_proc_names = { "TTbar" : "ttbar", "Wt" : "wt", "ZjetsHF" : "z" }
+        process_fractions = {}
+        for process in syst_proc_names :
+            process_fractions[process] = np.array(histograms_bkg[process].histogram / histo_total.histogram)
+            neg_frac = process_fractions[process] < 0
+            process_fractions[process][neg_frac] = 0
+        if plot_description.region_name in syst_files :
+            json_file = syst_files[plot_description.region_name]
+            with open(json_file, "r") as input_file :
+                syst_data = json.load(input_file)
+            process_errors = {}
+            if syst_data["variable"] == plot_description.var_to_plot :
+                processes = syst_data["processes"]
+                for process in syst_proc_names :
+                    for process_err_group in processes :
+                        if process_err_group["name"] == syst_proc_names[process] :
+                            err = process_err_group["errors"]
+
+                            # add Top and Z+HF mu uncerts
+                            if process_err_group["name"] == "ttbar" or process_err_group["name"] == "wt" :
+                                mu_top_uncert = 0.098 * np.ones(len(err))
+                                err = np.sqrt(np.power(err,2) + np.power(mu_top_uncert,2))
+                            elif process_err_group["name"] == "z" :
+                                mu_z_uncert = 0.066 * np.ones(len(err))
+                                err = np.sqrt(np.power(err,2) + np.power(mu_z_uncert,2))
+                            err_times_frac = err * process_fractions[process]
+                            process_errors[process] = err_times_frac
+            total_err = np.zeros(len(histo_total.histogram))
+            for proc_name, proc_err in process_errors.iteritems() :
+                total_err += np.power(proc_err,2)
+            total_err = np.sqrt(total_err)
+
+            sm_ratio_err = np.sqrt( np.power(sm_ratio_err,2) + np.power(total_err,2) )
+
     ratio_error_band = errorbars.error_hatches(
         [xv - 0.5 * bin_width for xv in ratio_x],
         np.ones(len(ratio_y)),
@@ -738,7 +791,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     ##
     ## signal legend
     ##
-    if len(signals) > 0 :
+    if len(signals) > 0 and "sr" in plot_description.region_name :
             # add signal to legend (here we assume that there is only one signal sample provided)
 
             # label
@@ -769,7 +822,6 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                     color = signals[0].color,
                     transform = upper_pad.transAxes
             )
-            
 
     ##
     ## labels
@@ -813,6 +865,9 @@ def main() :
     )
     parser.add_argument("--apply-sr-sf", default = False, action = "store_true",
         help = "Apply the norm factors for Z+HF and Top in d_hh tail regions"
+    )
+    parser.add_argument("--add-syst", default = False, action = "store_true",
+        help = "Add systematic uncertainty bands"
     )
     args = parser.parse_args()
 
