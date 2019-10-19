@@ -40,6 +40,15 @@ sf_vals_wt = { '1516' : 1.00, '151617' : 1.00 }
 top_sf =1.00#  0.82
 z_sf = 1.00# 1.35
 
+fakes = sample.Sample("FakesT3", "FakesT3")
+fakes.scalefactor = lumi_factor
+fakes.fillstyle = 0
+fakes.linestyle = "-"
+fakes.color = "g"
+fakes_h5_dir = "/data/uclhc/uci/user/dantrim/n0307val/wwbb_paper_plots/fake_inputs/h5/"
+fakes.load(filelist_dir + "fakes_mc16a", fakes_h5_dir, tags = tags)
+loaded_samples.append(fakes)
+
 top = sample.Sample("TTbar", "TTbar")
 top.scalefactor = lumi_factor * top_sf
 top.fillstyle = 0
@@ -56,7 +65,10 @@ wt.color = "#057390"
 wt.load(filelist_dir + "WtPP8_mc16a", h5_dir_mc, tags = tags)
 loaded_samples.append(wt)
 
-zhf = sample.Sample("ZjetsHF", "$Z/\\gamma*$+jets HF")
+#zhf = sample.Sample("ZjetsHF", "$Z/\\gamma*$+jets HF")
+#zhf = sample.Sample("ZjetsHF", r'$Z/\gamma^*$+jets HF')
+#zhf = sample.Sample("ZjetsHF", r'\textit{Z}/$\mathrm{\gamma}^*$+jets HF')
+zhf = sample.Sample("ZjetsHF", r'\textit{Z}/\textbf{$\gamma^*$}+jets HF')
 zhf.scalefactor = lumi_factor * z_sf
 zhf.fillstyle = 0
 zhf.linestyle = "-"
@@ -96,9 +108,9 @@ ttv.color = "#353531"
 ttv.load(filelist_dir + "ttV_mc16a", h5_dir_mc, tags = tags) #["mc16a", "mc16d", "mc16e"])
 loaded_samples.append(ttv)
 
-hh = sample.Sample("hhWWbb", "SM $hh$ (arbitrary $\\sigma$)")
+hh = sample.Sample("hhWWbb", "SM $hh$ ($20 \\times \\sigma^{SM}$)")
 hh.is_signal = True
-hh.scalefactor = lumi_factor #* 40#* 350
+hh.scalefactor = lumi_factor * 1.21 * 0.61 * 1.64# * 2#* 40#* 350
 hh.fillstyle = 0
 hh.linestyle = '--'
 #hh.color = "#E71D36"
@@ -133,8 +145,28 @@ r = region.Region("srPreSel", "srPreSel")
 r.tcut = "mll>20 && nBJets>=2 && mbb>100 && mbb<140"
 loaded_regions.append(r)
 
+r = region.Region("srIncNoDhhNoMbb", "srIncNoDhhNoMbb")
+r.tcut = "mll>20 && mll<60 && nBJets>=2 && NN_d_hh>0"
+loaded_regions.append(r)
+
 r = region.Region("srIncNoDhh", "srIncNoDhh")
 r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140"
+loaded_regions.append(r)
+
+r = region.Region("srSFNoDhh", "srSFNoDhh")
+r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && isSF==1"
+loaded_regions.append(r)
+
+r = region.Region("srDFNoDhh", "srDFNoDhh")
+r.tcut = "mll>20 && mll<60 && nBJets>=2 && mbb>110 && mbb<140 && isDF==1"
+loaded_regions.append(r)
+
+r = region.Region("srIncNoMbbDhh", "srIncNoMbbDhh")
+r.tcut = "mll>20 && mll<60 && nBJets>=2 && NN_d_hh>5"
+loaded_regions.append(r)
+
+r = region.Region("srIncNoMllDhh", "srIncNoMllDhh")
+r.tcut = "mbb>110 && mbb<140 && nBJets>=2 && NN_d_hh>5"
 loaded_regions.append(r)
 
 r = region.Region("srIncNoDhhClose", "srIncNoDhhClose")
@@ -165,10 +197,19 @@ r = region.Region("crTop", "crTopNoDhh")
 r.tcut = "isDF==1 && mll>20 && mll<60 && nBJets>=2 && (mbb<100 || mbb>140) && NN_d_hh>4.5"
 loaded_regions.append(r)
 
+r = region.Region("vrTop", "vrTop")
+r.tcut = "isSF==1 && mll>20 && mll<60 && nBJets>=2 && mbb>140 && NN_d_hh>4.5"
+loaded_regions.append(r)
+
 r = region.Region("crZNoDhh", "crZNoDhh")
 r.tcut = "(mll>81.2 && mll<101.2) && nBJets>=2 && mbb>100 && mbb<140"
 loaded_regions.append(r)
 
 r = region.Region("crZ", "crZ")
 r.tcut = "(mll>81.2 && mll<101.2) && nBJets>=2 && mbb>100 && mbb<140 && NN_d_hh>0"
+loaded_regions.append(r)
+
+r = region.Region("vrZ", "vrZ")
+#r.tcut = "((mll>71.2 && mll<81.2) || (mll>101.2 && mll<115)) && nBJets>=2 && mbb>100 && mbb<140 && NN_d_hh>0"
+r.tcut = "nBJets>=2 && mbb>100 && mbb<140 && NN_d_hh>0"
 loaded_regions.append(r)

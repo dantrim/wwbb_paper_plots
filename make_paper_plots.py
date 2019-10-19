@@ -3,6 +3,10 @@
 import sys, os
 import argparse
 
+from matplotlib import rc
+rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+rc('text', usetex=True)
+
 import dantrimania.python.analysis.utility.samples.sample as sample
 import dantrimania.python.analysis.utility.samples.sample_utils as sample_utils
 import dantrimania.python.analysis.utility.samples.region_utils as region_utils
@@ -14,18 +18,29 @@ from dantrimania.python.analysis.utility.plotting.histogram1d import histogram1d
 from dantrimania.python.analysis.utility.plotting.histogram_stack import histogram_stack
 from dantrimania.python.analysis.utility.plotting.ratio_canvas import ratio_canvas
 
+
 plt = plib.import_pyplot()
+import matplotlib
+from matplotlib.ticker import ScalarFormatter 
 import numpy as np
 import json
 
+# helvetica
+#from matplotlib import rc
+#plt.rcParams['ps.useafm'] = True
+#plt.rcParams['font.sans-serif'] = 'Helvetica'
+#plt.rcParams['pdf.fonttype'] = 42
+#print plt.rcParams
+#rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
+
 class PlotDescription :
 
-    def __init__(self, descriptor = "") :
+    def __init__(self, descriptor = "", abs_val = False) :
         self.descriptor = descriptor
 
         # variable stuff
         self.var_to_plot = ""
-        self.is_abs = False
+        self.is_abs = abs_val
 
         # region struff
         self.region_name = ""
@@ -119,7 +134,30 @@ def get_required_variables(region_to_plot, plot_description) :
     variables.append("isBL")
     variables.append("isCL")
     variables.append("isLL")
+    variables.append("dRll")
+    variables.append("HT2Ratio")
+    variables.append("dphi_ll")
+    #variables.append("dphi_bb")
+    variables.append("met")
+    variables.append("mt2_bb")
+    #variables.append("pTll")
+    #variables.append("dphi_met_ll")
+    #variables.append("met_pTll")
+    variables.append("l0_pt")
+    variables.append("l1_pt")
+    variables.append("bj0_pt")
+    variables.append("bj1_pt")
     return variables
+
+def get_vrz_mll_cut(arr) :
+
+    flav = arr["isSF"]
+    mll = arr["mll"]
+    idx_low = (mll>71.2) & (mll<81.2)
+    idx_high = (mll>101.2) & (mll<115) 
+    idx_flav = flav == 1
+    idx_pass_vrz = (idx_low | idx_high) & idx_flav
+    return idx_pass_vrz
 
 def get_trigger_idx(arr) :
 
@@ -130,56 +168,135 @@ def get_trigger_idx(arr) :
     idx = (idx_15 | idx_16 | idx_17 | idx_18)
     return idx
 
+def legend_and_labels_type(region_name = "", var_name = "") :
+
+    key = "{}_{}".format(region_name, var_name)
+    ll = {}
+    pass
+
 def bounds_dict() :
 
     v = {}
     sr_sf_cut_bins = np.arange(5.45, 12+0.45, 0.45)
-    v["NN_d_hh"] = { "srIncNoDhh" : [1, -11, 11],
+    v["NN_d_hh"] = {
+                    "srIncNoDhh" : [1, -11, 11],
+                    "srSFNoDhh" : [1, -11, 12],
+                    "srDFNoDhh" : [1, -12, 10],
                         "srPreSel" : [1, -11, 11],
                     "srIncNoDhhClose" : [1, 0, 12],
                     "srSFNoDhhClose" : [0.45, 5.45, 12],
                     "srDFNoDhhClose" : [0.5, 4, 9],
                     #"srSFNoDhhCloseCut" : [5.45, 7, 8, 9, 10, 11, 12], #, 6.5, 7, 7.5, 8, 9, 10, 11, 12], #, 5.45, 12], #sr_sf_cut_bins,
                     #"srSFNoDhhCloseCut" : [5.45, 5.90, 6.35, 7, 8, 10, 12], #, 8.15, 8.60, 9.05],
-                    "srSFNoDhhCloseCut" : [1, 5.5, 11.5],
-                    "srDFNoDhhCloseCut" : [1, 5.5, 9.5],
+                    "srSFNoDhhCloseCut" : [1, 5.45, 11.45],
+                    "srDFNoDhhCloseCut" : [1, 5.55, 9.55],
                     "crTopNoDhh" : [1, -12, 12],
                     "crTop" : [1, 4.5, 11.5],
+                    "vrTop" : [1, 4.5, 11.5],
+                    "vrZ" : [1, 0, 6],
                     "crZNoDhh" : [1, -12, 12],
                     "crZ" : [1, 0, 8],
+    }
+    v["mbb"] = {
+        "srIncNoDhhNoMbb" : [10, 0, 300]
+        ,"srIncNoDhh" : [5, 110, 140]
+        ,"crTop" : [50, 0, 500]
+        ,"vrTop" : [5, 100, 140]
+        ,"crZ" : [5, 100, 140]
+        ,"vrZ" : [5, 100, 140]
+        ,"srIncNoMbbDhh" : [20, 20, 300]
+    }
+    v["HT2Ratio"] = {
+        "srIncNoDhh" : [0.1, 0, 1]
+        ,"crTop" : [0.1, 0.2, 1.0]
+        ,"vrTop" : [0.1, 0.2, 1.0]
+        ,"crZ"   : [0.1, 0.5, 1 ]
+        ,"vrZ"   : [0.1, 0.5, 1.0 ]
+        ,"srIncNoMbbDhh" : [0.1, 0.6, 1.0]
+    }
+    v["dRll"] = {
+        "srIncNoDhh" : [0.2, 0, 3.6]
+        ,"crTop" : [0.2, 0.2, 2.2]
+        ,"vrTop" : [0.2, 0, 2.4]
+        ,"crZ"   : [0.4, 0, 2.8]
+        ,"vrZ"   : [0.4, 0, 3.2]
+    }
+    v["mt2_bb"] = {
+        "srIncNoDhh" : [30, 0, 300]
+        ,"crTop" : [40, 0, 360]
+        ,"vrTop" : [40, 0, 360]
+        ,"crZ"   : [20, 0, 160]
+        ,"vrZ"   : [20, 0, 200]
+    }
+    v["dphi_ll"] = {
+        "srIncNoDhh" : [0.2, 0, 3.2]
+        ,"crTop" : [0.2, 0, 1.8]
+        ,"vrTop" : [0.2, 0, 1.8]
+        ,"crZ" : [0.2, 0, 1.8]
+        ,"vrZ" : [0.2, 0, 1.8]
+    }
+
+    v["mll"] = {
+        "srIncNoMllDhh" : [5, 20, 80]
     }
     #v["NN_d_hh"] = { "srIncNoDhh" : [-11, -5, -4, -3, 11] }
     return v
 
 def region_nice_names_dict() :
 
+    dhh_text = r"\textit{d}$_{\mbox{\small{\textit{HH}}}}$"
+    mbb_text = r"\textit{m}$_{\mbox{\small{\textit{bb}}}}$"
+    mll_text = r"\textit{m}$_{\textit{\normalsize{ll}}}$"
     n = {}
-    n["srIncNoDhh"] = "SR, $\\ell \\ell$-inc., no $d_{hh}$"
+    n["srIncNoDhhNoMbb"] = "$m_{\\ell\\ell} \\in [20,60]$ GeV"
+    n["srIncNoDhh"] = "SR, SF+DF and no %s cut" % dhh_text
+    n["srSFNoDhh"] = "SR-SF, no %s cut" % dhh_text
+    n["srDFNoDhh"] = "SR-DF, no %s cut" % dhh_text
     n["srPreSel"] = "Pre-selection"
-    n["srIncNoDhhClose"] = "SR, $\\ell \\ell$-inc., no $d_{hh}$"
-    n["srSFNoDhhClose"] = "SR-SF, no $d_{hh}$"
-    n["srDFNoDhhClose"] = "SR-DF, no $d_{hh}$"
+    n["srIncNoDhhClose"] = "SR, SF+DF and no %s cut" % dhh_text
+    n["srSFNoDhhClose"] = "SR-SF, no %s cut" % dhh_text
+    n["srDFNoDhhClose"] = "SR-DF, no %s cut" % dhh_text
     n["srSFNoDhhCloseCut"] = "SR-SF"
     n["srDFNoDhhCloseCut"] = "SR-DF"
-    n["crTopNoDhh"] = "CR-Top, no $d_{hh}$"
+    n["crTopNoDhh"] = "CR-Top, no %s cut" % dhh_text
     n["crTop"] = "CR-Top"
-    n["crZNoDhh"] = "CR-Z+HF, no $d_{hh}$"
+    #n["vrTop"] = "VR-Top"
+    n["vrTop"] = "VR-1"
+    #n["vrZ"] = "VR-Z+HF"
+    n["vrZ"] = "VR-2"
+    n["crZNoDhh"] = "CR-Z+HF, no %s cut" % dhh_text
     n["crZ"] = "CR-Z+HF"
+    n["srIncNoMbbDhh"] = "SR, SF+DF and no %s cut" % mbb_text
+    n["srIncNoMllDhh"] = "SR, SF+DF and no %s cut" % mll_text
     return n
 
 def nice_names_dict() :
 
     n = {}
-    n["NN_d_hh"] = "$d_{hh}$"
+    n["NN_d_hh"] = "$d_{HH}$"
+    n["mbb"] = "$m_{bb}$ [GeV]"
+    n["HT2Ratio"] = "$H_{T2}^{R}$"
+    n["dRll"] = "$\\Delta R _{\\ell \\ell}$"
+    n["mt2_bb"] = "$m_{T2}^{bb}$ [GeV]"
+    n["dphi_ll"] = "$|\\Delta \\phi_{\\ell \\ell}|$ [rad.]"
+    n["mll"] = "$m_{\\ell\\ell}$ [GeV]"
+
+    n["NN_d_hh"] = r"\textit{d}$_{\mbox{\small{\textit{HH}}}}$"
+    n["mbb"] = r"\textit{m}$_{\mbox{\small{\textit{bb}}}}$ [GeV]"
+    n["HT2Ratio"] = r"\textit{H}$_{\mbox{\textit{\normalsize{T2}}}}^{\mbox{\textit{\normalsize{R}}}}$"
+    n["dRll"] = r"$\Delta$\textit{R}$_{\textit{\normalsize{ll}}}$"
+    n["mt2_bb"] = r"\textit{m}$_{\mbox{\textit{\normalsize{T2}}}}^{\mbox{\textit{\normalsize{bb}}}}$ [GeV]"
+    n["dphi_ll"] = r"$|\Delta\phi_{\mbox{\textit{\normalsize{ll}}}}|$ [rad.]"
+    n["mll"] = r"\textit{m}$_{\textit{\normalsize{ll}}}$ [GeV]"
     return n
 
 def add_labels(pad, region_name = "", var_name = "") :
 
 
     x_atlas = 0.04
-    y_atlas = 0.97
-    x_type_offset = 0.24
-    y_type = 0.97
+    y_atlas = 0.96
+    x_type_offset = 0.22
+    y_type = 0.96
 
     x_lumi = 0.04
     y_lumi = 0.88
@@ -199,7 +316,7 @@ def add_labels(pad, region_name = "", var_name = "") :
         x_region = 0.29
         y_region = 0.79
 
-    if (region_name == "crZ" or region_name == "crTop") and var_name == "NN_d_hh" :
+    if (region_name == "crZ" or region_name == "crTop" or region_name == "vrTop" or region_name == "vrZ") and (var_name == "NN_d_hh" or var_name == "dRll" or var_name == "dphi_ll" or var_name == "mt2_bb"):
         x_atlas = 0.33
         y_atlas = 0.96
         y_type = 0.96
@@ -210,25 +327,83 @@ def add_labels(pad, region_name = "", var_name = "") :
         x_region = 0.33
         y_region = 0.8
 
+    if (region_name == "crZ" or region_name == "vrZ") and (var_name == "dRll" or var_name == "dphi_ll") :
+        x_atlas = 0.04
+        y_atlas = 0.97
+        x_type_offset = 0.24
+        y_type = 0.97
+
+        x_lumi = 0.04
+        y_lumi = 0.88
+
+        x_region = 0.042
+        y_region = 0.80
+
+    if (region_name == "crTop") and (var_name == "mt2_bb") :
+        x_atlas = 0.04
+        y_atlas = 0.97
+        x_type_offset = 0.24
+        y_type = 0.97
+
+        x_lumi = 0.04
+        y_lumi = 0.88
+
+        x_region = 0.042
+        y_region = 0.80
+
     # ATLAS label
     size = 24
-    text = 'ATLAS'
+    #text = 'ATLAS'
+    text = '\\textbf{\\textit{ATLAS}}'
     opts = dict(transform = pad.transAxes)
     opts.update( dict(va = 'top', ha = 'left') )
-    pad.text(x_atlas, y_atlas, text, size = size, style = 'italic', weight = 'bold', **opts)
+    #pad.text(x_atlas, y_atlas, text, size = size, style = 'italic', weight = 'bold', **opts)
+    pad.text(x_atlas, y_atlas, text, size = size, **opts) #style = 'italic', weight = 'bold', **opts)
 
-    what_kind = 'Internal'
+    #what_kind = 'Preliminary'
+    what_kind = ''
     pad.text(x_atlas + x_type_offset, y_type, what_kind, size = size, **opts)
 
-    lumi = '140'#.5'
-    pad.text(x_lumi, y_lumi, '$\\sqrt{s} = 13$ TeV, %s fb$^{-1}$' % lumi, size = 0.75 * size, **opts)
+    lumi = '139'#.5'
+    pad.text(x_lumi, y_lumi, '$\\sqrt{s} =$ 13 TeV, %s fb$^{-1}$' % lumi, size = 0.75 * size, **opts)
+
+    if "no" in region_nice_names_dict()[region_name] and "cut" in region_nice_names_dict()[region_name] :
+        size = 0.9 * size
+        
 
     # region
-    if region_name == "srIncNoDhh" and var_name == "NN_d_hh" :
+    if (region_name == "srIncNoDhh" or region_name == "srIncNoMbbDhh" or region_name == "srSFNoDhh" or region_name == "srDFNoDhh") and (var_name == "NN_d_hh" or var_name == "mbb") :
         region_text = "Selection:"
         pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
-        region_text = "\t%s" % region_nice_names_dict()[region_name]
-        pad.text(x_region, 0.92 * y_region, region_text, size = 0.75 * size, **opts)
+        #region_text = "\t%s" % region_nice_names_dict()[region_name]
+        region_text = "%s" % region_nice_names_dict()[region_name]
+        pad.text( 1.0 * x_region, 0.91 * y_region, region_text, size = 0.75 * size, **opts)
+    elif (region_name == "srIncNoMllDhh") and (var_name == "mll") :
+        region_text = "Selection:"
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
+        #region_text = "\t%s" % region_nice_names_dict()[region_name]
+        region_text = "   %s" % region_nice_names_dict()[region_name]
+        pad.text( 1.0 * x_region, 0.91 * y_region, region_text, size = 0.75 * size, **opts)
+    elif (region_name == "srIncNoDhh" or region_name == "srIncNoMbbDhh") and var_name == "HT2Ratio" :
+        region_text = "Selection:"
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
+        region_text = "   %s" % region_nice_names_dict()[region_name]
+        pad.text( 1.0 * x_region, 0.91 * y_region, region_text, size = 0.75 * size, **opts)
+    elif region_name == "srIncNoDhh" and var_name == "dRll" :
+        region_text = "Selection:"
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
+        region_text = "   %s" % region_nice_names_dict()[region_name]
+        pad.text( 1.0 * x_region, 0.91 * y_region, region_text, size = 0.75 * size, **opts)
+    elif region_name == "srIncNoDhh" and var_name == "mt2_bb" :
+        region_text = "Selection:"
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
+        region_text = "   %s" % region_nice_names_dict()[region_name]
+        pad.text( 1.0 * x_region, 0.91 * y_region, region_text, size = 0.75 * size, **opts)
+    elif region_name == "srIncNoDhh" and var_name == "dphi_ll" :
+        region_text = "Selection:"
+        pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
+        region_text = "  %s" % region_nice_names_dict()[region_name]
+        pad.text(x_region, 0.91 * y_region, region_text, size = 0.75 * size, **opts)
     else :
         region_text = "Selection: %s" % region_nice_names_dict()[region_name]
         pad.text(x_region, y_region, region_text, size = 0.75 * size, **opts)
@@ -240,7 +415,8 @@ def make_legend(ordered_labels, n_cols, var_name, region_name, pad) :
     new_labels = []
     for l in ordered_labels :
         for il, label in enumerate(labels) :
-            if label == l :
+            #if label == l :
+            if l in label :
                 new_labels.append(l.replace("SIG",""))
                 new_handles.append(handles[il])
 
@@ -251,10 +427,22 @@ def make_legend(ordered_labels, n_cols, var_name, region_name, pad) :
         leg_x = 0.58
         leg_y = 0.58
 
+    if n_cols == 1 and (region_name == "srIncNoDhh" or region_name == "srIncNoMbbDhh" or region_name == "srSFNoDhh" or region_name == "srDFNoDhh") and (var_name == "dRll" or var_name == "HT2Ratio"
+                        or var_name == "NN_d_hh" or var_name == "mbb" or var_name == "mt2_bb"
+                        or var_name == "dphi_ll"
+    ) :
+        leg_x = 0.58
+        #leg_y = 0.71
+        leg_y = 0.71
+
+    if n_cols == 1 and (region_name == "srIncNoMllDhh") and (var_name == "mll") :
+        leg_x = 0.58
+        leg_y = 0.71
+
     # sr
     if n_cols == 2 and (region_name == "srSFNoDhhCloseCut" or region_name == "srDFNoDhhCloseCut") and var_name == "NN_d_hh" :
         leg_x = 0.27
-        leg_y = 0.5
+        leg_y = 0.57
         legend_fontsize = 14
 
     # crZ
@@ -262,10 +450,48 @@ def make_legend(ordered_labels, n_cols, var_name, region_name, pad) :
         leg_x = 0.48
         leg_y = 0.3
         legend_fontsize = 16
-    if n_cols == 2 and (region_name == "crZ" or region_name == "crTop") and var_name == "NN_d_hh" :
+    if n_cols == 2 and (region_name == "crZ" or region_name == "crTop" or region_name == "vrTop" or region_name == "vrZ") and var_name == "NN_d_hh" :
         leg_x = 0.31
-        leg_y = 0.5
+        #leg_y = 0.5
+        leg_y = 0.57
         legend_fontsize = 14
+
+    #crTop
+    if n_cols == 2 and (region_name == "crTop" or region_name == "vrTop" or region_name == "crZ") and (var_name == "HT2Ratio") :
+        leg_x = 0.02
+        leg_y = 0.57
+
+    if n_cols == 2 and (region_name == "crTop" or region_name == "vrTop") and (var_name == "dRll" or var_name == "dphi_ll" or var_name == "mt2_bb") :
+        leg_x = 0.31
+        #leg_y = 0.5
+        leg_y = 0.6
+        legend_fontsize = 14
+
+    if n_cols == 2 and (region_name == "crZ" or region_name == "vrZ") and (var_name == "mt2_bb") :
+        leg_x = 0.31
+        #leg_y = 0.5
+        leg_y = 0.6
+        legend_fontsize = 14
+
+    if (region_name == "crTop") and (var_name == "mt2_bb") :
+        n_cols = 1 
+        leg_x = 0.58
+        leg_y = 0.71
+
+    if (region_name == "crZ") and (var_name == "dRll" or var_name == "dphi_ll") :
+        n_cols = 1 
+        leg_x = 0.58
+        leg_y = 0.71
+
+    if n_cols == 2 and ("vrZ") and (var_name == "HT2Ratio") :
+        leg_x = 0.02
+        leg_y = 0.57
+
+    if (region_name == "vrZ") and (var_name == "dRll" or var_name == "dphi_ll") :
+        n_cols = 1 
+        leg_x = 0.58
+        leg_y = 0.71
+        
 
 
     if len(ordered_labels) > 10 :
@@ -284,7 +510,7 @@ def make_legend(ordered_labels, n_cols, var_name, region_name, pad) :
 
 def colors_dict() :
 
-    palette = 3
+    palette = 5
     colors = {}
     colors[0] = { "other" : "#F1FAEE",
                     "zjetshf" : "#A8DADC",
@@ -307,19 +533,38 @@ def colors_dict() :
                     #"zjetshf" : "#44BBA4",
                     "ttbarv" : "#393E41",
                     "singlehiggs" : "#E94F37",
-                    "other" : "#44BBA4" }
+    }
+                    #"other" : "#44BBA4" }
                     #"other" : "#F6F7EB" }
+    colors[4] = {
+        "top" : "#2C7BB6",
+        "zjetshf" : "#D7191C",
+        "other" : "#953AC8"
+        #"other" : "#ABCBFB"
+        #"other" : "#FDAE61"
+    }
+
+    colors[5] = {
+        "top" : "#009FFD",
+        #"top" : "#3F88C5",
+        "zjetshf" : "#E94F37",
+        "other" : "#F7B32B"
+        #"other" : "#44BBA4"
+    }
                 
     return colors[palette]
 
 def get_legend_order(var_name, region_name) :
 
     standard_order = {}
-    standard_order[1] = ["Data", "Total SM", "Top", "$Z/\\gamma*$+jets HF", "$t\\bar{t} + V$", "Higgs", "Other"]
-    standard_order[2] = ["Data", "Top", "$Z/\\gamma*$+jets HF", "$t\\bar{t} + V$", "Total SM", "Higgs", "Other"]
+    standard_order[1] = ["Data", "Top", r'\textit{Z}/\textbf{$\gamma^*$}+jets HF', "Other"]
+    standard_order[2] = ["Data", "Top", r'\textit{Z}/\textbf{$\gamma^*$}+jets HF', "$t\\bar{t} + V$", "Total SM", "Higgs", "Other"]
 
     n_cols = {}
+    n_cols["srIncNoDhhNoMbb"] = 1
     n_cols["srIncNoDhh"] = 1
+    n_cols["srSFNoDhh"] = 1
+    n_cols["srDFNoDhh"] = 1
     n_cols["srIncNoDhhClose"] = 1
     n_cols["srSFNoDhhClose"] = 1
     n_cols["srDFNoDhhClose"] = 1
@@ -327,12 +572,18 @@ def get_legend_order(var_name, region_name) :
     n_cols["srDFNoDhhCloseCut"] = 2
     n_cols["crTopNoDhh"] = 1
     n_cols["crTop"] = 2
+    n_cols["vrTop"] = 2
+    n_cols["vrZ"] = 2
     n_cols["crZNoDhh"] = 1
     n_cols["crZ"] = 2
+    n_cols["srIncNoMbbDhh"] = 1
+    n_cols["srIncNoMllDhh"] = 1
 
     order_dict = {}
     order_dict["NN_d_hh"] = {
         "srIncNoDhh" : standard_order[n_cols[region_name]],
+        "srSFNoDhh" : standard_order[n_cols[region_name]],
+        "srDFNoDhh" : standard_order[n_cols[region_name]],
         "srIncNoDhhClose" : standard_order[n_cols[region_name]],
         "srSFNoDhhClose" : standard_order[n_cols[region_name]],
         "srDFNoDhhClose" : standard_order[n_cols[region_name]],
@@ -340,11 +591,66 @@ def get_legend_order(var_name, region_name) :
         "srDFNoDhhCloseCut" : standard_order[n_cols[region_name]],
         "crTopNoDhh" : standard_order[n_cols[region_name]],
         "crTop" : standard_order[n_cols[region_name]],
+        "vrTop" : standard_order[n_cols[region_name]],
+        "vrZ" : standard_order[n_cols[region_name]],
         "crZNoDhh" : standard_order[n_cols[region_name]],
         "crZ" : standard_order[n_cols[region_name]],
     }
+    order_dict["mbb"] = {
+        "srIncNoDhhNoMbb" : standard_order[n_cols[region_name]]
+        ,"srIncNoDhh" : standard_order[n_cols[region_name]]
+        ,"crTop" : standard_order[n_cols[region_name]]
+        ,"vrTop" : standard_order[n_cols[region_name]]
+        ,"crZ" : standard_order[n_cols[region_name]]
+        ,"vrZ" : standard_order[n_cols[region_name]]
+        ,"srIncNoMbbDhh" : standard_order[n_cols[region_name]]
+    }
+    order_dict["HT2Ratio"] = {
+        "srIncNoDhh" : standard_order[n_cols[region_name]]
+        ,"crTop" : standard_order[n_cols[region_name]]
+        ,"vrTop" : standard_order[n_cols[region_name]]
+        ,"crZ" : standard_order[n_cols[region_name]]
+        ,"vrZ" : standard_order[n_cols[region_name]]
+        ,"srIncNoMbbDhh" : standard_order[n_cols[region_name]]
+    }
+    order_dict["dRll"] = {
+        "srIncNoDhh" : standard_order[n_cols[region_name]]
+        ,"crTop" : standard_order[n_cols[region_name]]
+        ,"vrTop" : standard_order[n_cols[region_name]]
+        ,"crZ" : standard_order[n_cols[region_name]]
+        ,"vrZ" : standard_order[n_cols[region_name]]
+    }
+    order_dict["mt2_bb"] = {
+        "srIncNoDhh" : standard_order[n_cols[region_name]]
+        ,"crTop" : standard_order[n_cols[region_name]]
+        ,"vrTop" : standard_order[n_cols[region_name]]
+        ,"crZ" : standard_order[n_cols[region_name]]
+        ,"vrZ" : standard_order[n_cols[region_name]]
+    }
+    order_dict["dphi_ll"] = {
+        "srIncNoDhh" : standard_order[n_cols[region_name]]
+        ,"crTop" : standard_order[n_cols[region_name]]
+        ,"vrTop" : standard_order[n_cols[region_name]]
+        ,"crZ" : standard_order[n_cols[region_name]]
+        ,"vrZ" : standard_order[n_cols[region_name]]
+    }
+    order_dict["mll"] = {
+        "srIncNoMllDhh" : standard_order[n_cols[region_name]]
+    }
 
     return order_dict[var_name][region_name], n_cols[region_name]
+
+class OOMFormatter(ScalarFormatter):
+    def __init__(self, order=0, fformat="%1.1f", offset=True, mathText=True):
+        self.oom = order
+        self.fformat = fformat
+        ScalarFormatter.__init__(self,useOffset=offset,useMathText=mathText)
+    def _set_orderOfMagnitude(self, nothing):
+        self.orderOfMagnitude = self.oom
+    def _set_format(self, vmin, vmax):
+        self.format = self.fformat
+        if self._useMathText:
+            self.format = '$%s$' % matplotlib.ticker._mathdefault(self.format)
 
 def make_paper_plot(region, backgrounds, signals, data, plot_description, args) :
 
@@ -352,7 +658,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     labels_bkg = {}
     colors_bkg = {}
     top_bkg = ["ttbar", "wt"]
-    other_bkg = ["zjetslf", "diboson"]
+    other_bkg = ["zjetslf", "diboson", "fakest3", "singlehiggs", "ttbarv"]
     labels_bkg["other"] = "Other"
     colors_bkg["other"] = "g"
     labels_bkg["top"] = "Top"
@@ -406,6 +712,9 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
 
             trigger_idx = get_trigger_idx(c)
             c = c[trigger_idx]
+            if plot_description.region_name == "vrZ" :
+                vrz_idx = get_vrz_mll_cut(c)
+                c = c[vrz_idx]
             weights = c[weight_str]
 
             if plot_description.region_name == "crTopNoDhh" and bkg.name.lower() == "zjetslf" :
@@ -439,7 +748,15 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                     dhh_cut = 0
                 elif plot_description.region_name.lower() == "crtop" :
                     dhh_cut = 4.5
-                elif plot_description.region_name == "srIncNoDhh" :
+                elif (plot_description.region_name == "srIncNoDhh" or plot_description.region_name == "srIncNoMbbDhh") :
+                    dhh_cut = 5.45
+                elif (plot_description.region_name == "srIncNoMllDhh") :
+                    dhh_cut = 5.45
+                elif (plot_description.region_name == "srSFNoDhh") :
+                    dhh_cut = 5.45
+                elif (plot_description.region_name == "srDFNoDhh") :
+                    dhh_cut = 5.55
+                elif plot_description.region_name == "srIncNoDhhNoMbb" :
                     dhh_cut = 5.45
                 if bkg.name.lower() == "ttbar" or bkg.name.lower() == "wt" or "top" in bkg.name.lower() :
                     scales = np.ones(len(plot_data))
@@ -455,10 +772,31 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                     lumis[sr_cut_idx] *= 1.34
                     print " *** SCALING ZJETS IN SR ONLY ***"
 
+            if "fakes" in bkg.name.lower() :
+                rname = plot_description.region_name
+                fake_scaling = 1.0
+                if "srdf" in rname.lower() :
+                    fake_scaling = 1.1798
+                elif "srsf" in rname.lower() :
+                    fake_scaling = 1.1300
+                elif "srinc" in rname.lower() :
+                    fake_scaling = 1.1513
+                elif "crt" in rname.lower() :
+                    #fake_scaling = 1.476 * 2.47
+                    #print "SCALING FAKES FUCK"
+                    fake_scaling = 1.476
+                elif "crz" in rname.lower() :
+                    fake_scaling = 0.8299
+
+                scales = np.ones(len(plot_data))
+                lumis *= fake_scaling
+
             weights = lumis * weights
             if bkg.name.lower() not in other_bkg and bkg.name.lower() not in top_bkg :
                 h.fill(plot_data, weights)
             elif bkg.name.lower() in other_bkg :
+                if "fakes" in bkg.name.lower() :
+                    print "ADDING FAKES FUCK HISTO"
                 h_other.fill(plot_data, weights)
             elif bkg.name.lower() in top_bkg :
                 h_top.fill(plot_data, weights)
@@ -511,6 +849,9 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     for idc, dc in enumerate(chain) :
         trigger_idx = get_trigger_idx(dc)
         dc = dc[trigger_idx]
+        if plot_description.region_name == "vrZ" :
+            vrz_idx = get_vrz_mll_cut(dc)
+            dc = dc[vrz_idx]
         if plot_description.is_abs :
             plot_data = np.absolute(dc[plot_description.var_to_plot])
         else :
@@ -525,7 +866,27 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
 
     canvas = ratio_canvas("ratio_canvas_%s" % plot_description.var_to_plot, logy = args.logy)
     x_label = nice_names_dict()[plot_description.var_to_plot]
-    y_label = "Events / Bin"
+    bw_str = "%.1f" % bin_width
+    if bw_str.strip().split(".")[-1] == "0" :
+        bw_str = bw_str.strip().split(".")[0]
+    y_label = "Events / %s" % bw_str
+    if "GeV" in x_label :
+        y_label += " GeV"
+    elif "rad" in x_label.lower() :
+        y_label += " rad."
+    else :
+        y_label = "Events / %s" % bw_str
+    #y_label = "Events / Bin"
+
+    #if plot_description.var_to_plot == "dRll" and plot_description.region_name == "srIncNoDhh" :
+    #    y_label = "Events / 0.2"
+    #elif plot_description.var_to_plot == "HT2Ratio" and plot_description.region_name == "srIncNoDhh" :
+    #    y_label = "Events / 0.1"
+    #elif plot_description.var_to_plot == "mbb" and plot_description.region_name = "srIncNoMbbDhh" :
+    #    y_label = "Events / 20 GeV"
+    #elif plot_description.var_to_plot == "HT2Ratio" and plot_description.region_name = "srIncNoMbbDhh" :
+    #    y_label = "Events / 0.1"
+
     canvas.labels = [x_label, y_label]
     canvas.x_bounds = [x_lo, x_hi]
     canvas.build()
@@ -543,6 +904,8 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     else :
         ticks = x_bounds
 
+    
+
     histo_total = stack.total_histo
     maxy = histo_total.maximum()
     miny = 0.0
@@ -556,24 +919,73 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         if "srsf" in plot_description.region_name.lower() or "srdf" in plot_description.region_name.lower() :
             multiplier = 1e2
     maxy = multiplier * maxy
-    print "maxy = %.2f" % maxy
 
     if plot_description.region_name == "srSFNoDhhCloseCut" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
-        maxy = 12
+        maxy = 10
     elif plot_description.region_name == "srDFNoDhhCloseCut" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
         maxy = 10
     elif plot_description.region_name == "crZ" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
         maxy = 400
     elif plot_description.region_name == "crTop" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
         maxy = 70
+    elif plot_description.region_name == "vrTop" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
+        maxy = 85
+    elif plot_description.region_name == "vrZ" and plot_description.var_to_plot == "NN_d_hh" and not args.logy :
+        maxy = 95
+    elif plot_description.region_name == "srIncNoDhh" and plot_description.var_to_plot == "HT2Ratio" and args.logy :
+        maxy = 1e8
+    elif plot_description.region_name == "srIncNoDhh" and plot_description.var_to_plot == "dRll" and args.logy :
+        maxy = 1e7
+    elif plot_description.region_name == "srDFNoDhh" and plot_description.var_to_plot == "NN_d_hh" and args.logy :
+        maxy = 5e6
+    elif plot_description.region_name == "srSFNoDhh" and plot_description.var_to_plot == "NN_d_hh" and args.logy :
+        maxy = 1e7
+    elif plot_description.region_name == "srIncNoMbbDhh" and plot_description.var_to_plot == "mbb" and not args.logy :
+        maxy = 50
+    elif plot_description.region_name == "srIncNoMbbDhh" and plot_description.var_to_plot == "HT2Ratio" and not args.logy :
+        maxy = 260
+    elif plot_description.region_name == "srIncNoMllDhh" and plot_description.var_to_plot == "mll" and not args.logy :
+        maxy = 18
+    elif plot_description.region_name == "crTop" and plot_description.var_to_plot == "HT2Ratio" and not args.logy :
+        maxy = 70
+    elif plot_description.region_name == "crTop" and plot_description.var_to_plot == "dRll" and not args.logy :
+        maxy = 42
+    elif plot_description.region_name == "crTop" and plot_description.var_to_plot == "mt2_bb" and not args.logy :
+        maxy = 40
+    elif plot_description.region_name == "crTop" and plot_description.var_to_plot == "dphi_ll" and not args.logy :
+        maxy = 42
+    elif plot_description.region_name == "vrTop" and plot_description.var_to_plot == "HT2Ratio" and not args.logy :
+        maxy = 87
+    elif plot_description.region_name == "vrTop" and plot_description.var_to_plot == "dRll" and not args.logy :
+        maxy = 70
+    elif plot_description.region_name == "vrTop" and plot_description.var_to_plot == "mt2_bb" and not args.logy :
+        maxy = 65
+    elif plot_description.region_name == "vrTop" and plot_description.var_to_plot == "dphi_ll" and not args.logy :
+        maxy = 78
+    elif plot_description.region_name == "crZ" and plot_description.var_to_plot == "HT2Ratio" and not args.logy :
+        maxy = 570
+    elif plot_description.region_name == "crZ" and plot_description.var_to_plot == "dRll" and not args.logy :
+        maxy = 670
+    elif plot_description.region_name == "crZ" and plot_description.var_to_plot == "mt2_bb" and not args.logy :
+        maxy = 350
+    elif plot_description.region_name == "crZ" and plot_description.var_to_plot == "dphi_ll" and not args.logy :
+        maxy = 285
+    elif plot_description.region_name == "vrZ" and plot_description.var_to_plot == "HT2Ratio" and not args.logy :
+        maxy = 100
+    elif plot_description.region_name == "vrZ" and plot_description.var_to_plot == "mt2_bb" and not args.logy :
+        maxy = 46
+    elif plot_description.region_name == "vrZ" and plot_description.var_to_plot == "dphi_ll" and not args.logy :
+        maxy = 48
 
-    upper_pad.set_ylim(miny, maxy)
+
 
     # stat error
     sm_x_error = np.zeros(len(histo_total.y_error()))
     sm_y_error = histo_total.y_error()
-    stat_error_band = errorbars.error_hatches(histo_total.bins[:-1], histo_total.histogram, \
-            sm_x_error, sm_y_error, hatch_bin_width)
+
+    if not args.add_syst :
+        stat_error_band = errorbars.error_hatches(histo_total.bins[:-1], histo_total.histogram, \
+                sm_x_error, sm_y_error, hatch_bin_width)
 
     # total SM line
     sm_line = histo_total.bounding_line()
@@ -597,8 +1009,8 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                     label = ordered_bkg_labels,
                     stacked = True,
                     histtype = "stepfilled",
-                    lw = 1,
-                    edgecolor = "none",
+                    lw = 0.5,
+                    edgecolor = "k",
                     alpha = 1.0
     )
 
@@ -608,10 +1020,11 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     print histo_total.count_str(name = "Total SM")
 
     # draw error band
-    upper_pad.add_collection(stat_error_band)
+    if not args.add_syst :
+        upper_pad.add_collection(stat_error_band)
 
     # draw total SM
-    upper_pad.plot(sm_line[0], sm_line[1], ls = "-", color = "k", label = "Total SM", lw = 2)
+    #upper_pad.plot(sm_line[0], sm_line[1], ls = "-", color = "k", label = "Total SM", lw = 2)
 
     # draw data
     if not is_variable_width :
@@ -622,7 +1035,7 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         data_x = x_left_edges
     data_y = h_data.histogram
     data_y[data_y == 0.] = -5
-    upper_pad.plot(data_x, data_y, "ko", label = "Data", zorder = 1e6)
+    upper_pad.plot(data_x, data_y, "ko", label = "Data", zorder = 1e6, markersize = 8)
 
     # poisson errors on data
     data_err_low, data_err_high = errorbars.poisson_interval(data_y)
@@ -637,6 +1050,14 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     ##
     ## signal histograms
     ##
+    #signal_color = "#29fd2f" # color used for first submission
+    #signal_color = "#00ffff" # bright blue
+    #signal_color = "#6fff00" # neon green
+    #signal_color = "r"
+    #signal_color = "#ffff00" # bright yellow
+    #signal_color = "#33cc33" # green
+    #signal_color = "k"
+    signal_color = "#ff00ff"#
     if len(signals) > 0 and "sr" in plot_description.region_name.lower() :
         for signal in signals :
             h = histogram1d("signal_histo_%s" % signal.name, binning = x_bounds)
@@ -644,6 +1065,11 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
             for isc, sc in enumerate(chain) :
                 trigger_idx = get_trigger_idx(sc)
                 sc = sc[trigger_idx]
+
+                if plot_description.region_name == "vrZ" :
+                    vrz_idx = get_vrz_mll_cut(sc)
+                    sc = sc[vrz_idx]
+
                 weights = sc[weight_str]
 
                 if plot_description.is_abs :
@@ -657,10 +1083,15 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                 #    weights *= 50
                 h.fill(plot_data, weights)
 
+            # signal color
             upper_pad.hist( h.data, weights = h.weights,
                         bins = bin_vals,
-                        color = signal.color,
+                        #color = 'k', #signal.color,
+                        #color = "#72ff02",
+                        #color = "#29fd2f", # color used for first submission
+                        color = signal_color,
                         label = "$hh$",
+                        #ls = ":",
                         ls = "-",
                         stacked = False,
                         histtype = "step",
@@ -671,13 +1102,87 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
             print "hh counts"
             print h.count_str()
 
-            
 
     ##
     ## ratio
     ##
-    #lower_pad.set_yticks([0.5, 0.75, 1.0, 1.25, 1.5])
-    #lower_pad.set_ylim([0.5, 1.5])
+    ratio_y_min = 0.5
+    ratio_y_max = 1.5
+    lower_pad.set_yticks([0.5, 0.75, 1.0, 1.25, 1.5])
+    lower_pad.set_ylim([ratio_y_min, ratio_y_max])
+
+    upper_pad.set_ylim(miny, maxy)
+    upper_pad.set_xlim(x_lo, x_hi)
+    lower_pad.set_xlim(x_lo, x_hi)
+
+    # helvetic x and y axis labels
+    y_tick_loc = upper_pad.get_yticks()
+    y_tick_loc = [x for x in y_tick_loc if x >= miny]
+    y_tick_loc = [x for x in y_tick_loc if x <= maxy]
+    y_tick_labs = ["%s" % x for x in upper_pad.get_yticks() ]
+    y_tick_labs = [x.replace(".0","").replace(".00","") for x in y_tick_labs]
+    upper_pad.set_yticks(y_tick_loc)
+    upper_pad.set_yticklabels(y_tick_labs)
+    if args.logy :
+        #print "FOOBS %s" % ["{:.0e}".format(x) for x in upper_pad.get_yticks()]
+        #upper_pad.yaxis.set_major_formatter(ScalarFormatter())
+        #upper_pad.yaxis.set_major_formatter(OOMFormatter(9, "%1.1f"))
+        #upper_pad.ticklabel_format(axis = "y", style = "scientific", scilimits=(2,2))
+        y_tick_labs = ["{:.2e}".format(x) for x in upper_pad.get_yticks()]
+        y_tick_labs = [r"10$^{\mbox{%s}}$" % str(int(x.split("e")[-1].replace("+",""))) for x in y_tick_labs]
+        upper_pad.set_yticklabels(y_tick_labs)
+        #y_tick_labs = ["{:.2e}".format(x) for x in upper_pad.get_yticks() ]
+
+    
+
+    r_tick_loc = lower_pad.get_yticks()
+    r_tick_labs = ["%s" % x for x in lower_pad.get_yticks() ]
+    lower_pad.set_yticks(r_tick_loc)
+    lower_pad.set_yticklabels(r_tick_labs)
+
+    #x_tick_loc = lower_pad.get_xticks()
+    bw, xlo, xhi = bounds_dict()[plot_description.var_to_plot][plot_description.region_name]
+    #print "FUCK bw xlo xhi = %s %s %s" % (bw, xlo, xhi)
+    x_tick_loc = [round(x, 2) for x in np.arange(x_lo, xhi+bw, bw) if x <= xhi]
+    x_tick_loc_orig = [round(x, 2) for x in np.arange(x_lo, xhi+bw, bw) if x <= xhi]
+    x_tick_labs = ["%.2f" % x for x in x_tick_loc] # if x < (xhi + 1e-5)]
+    if (plot_description.var_to_plot == "NN_d_hh" or plot_description.var_to_plot == "mt2_bb" or plot_description.var_to_plot == "mbb" or plot_description.var_to_plot == "mll") and ("srInc" in plot_description.region_name or "srDF" in plot_description.region_name or "srSF" in plot_description.region_name) and ("Cut" not in plot_description.region_name) : 
+        x_tick_labs = ["%d" % int(x) for x in x_tick_loc] # if x < (xhi + 1e-5)]
+    x_tick_labs_orig = ["%.2f" % x for x in x_tick_loc] # if x < (xhi + 1e-5)]
+    if len(x_tick_labs) > 8 :
+        x_tick_loc = x_tick_loc[::2]
+        x_tick_labs = x_tick_labs[::2]
+    #print "FUCK3 %s" % x_tick_labs_orig[-1]
+    #if x_tick_labs_orig[-1] not in x_tick_labs :
+    #    x_tick_loc.append(x_tick_loc_orig[-1])
+    #    x_tick_labs.append(x_tick_labs_orig[-1])
+    #print "FUCK loc %s" % x_tick_loc
+    #print "FUCK lab %s" % x_tick_labs
+    lower_pad.set_xlim([xlo,xhi])
+    upper_pad.set_xlim([xlo,xhi])
+    
+    lower_pad.set_xticks(x_tick_loc)
+    lower_pad.set_xticklabels(x_tick_labs)
+
+    x_tick_labs = ["%s" % x for x in lower_pad.get_xticks()]
+    x_tick_labs = [x.replace(".00","").replace(".50",".5").replace(".20",".2") for x in x_tick_labs]
+    all_zeros = True
+    found_split = False
+    for x in x_tick_labs :
+        x_split = x.split(".")
+        if len(x_split) == 2 :
+            found_split = True
+            if float(x_split[1]) != 0.0 :
+                all_zeros = False
+    if found_split and all_zeros :
+        x_tick_labs = [x.split(".")[0] for x in x_tick_labs]
+                
+            
+    print "x_tick_labs = %s" % x_tick_labs
+    x_tick_loc = lower_pad.get_xticks()
+    lower_pad.set_xticks(x_tick_loc)
+    lower_pad.set_xticklabels(x_tick_labs)
+    upper_pad.set_xticks(x_tick_loc)
 
     pred_y = histo_total.histogram
     ratio_y = h_data.divide(histo_total)
@@ -694,9 +1199,37 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
         else :
             ratio_data_err_low[idata] = data_err_low[idata] / prediction
             ratio_data_err_high[idata] = data_err_high[idata] / prediction
-    lower_pad.plot(ratio_x, ratio_y, "ko", zorder = 1000)
+    lower_pad.plot(ratio_x, ratio_y, "ko", zorder = 1000, markersize = 8)
     yerr = [ratio_data_err_low, ratio_data_err_high]
     lower_pad.errorbar(ratio_x, ratio_y, yerr = yerr, fmt = "none", color = "k")
+
+    ##
+    ## draw arrows for points outside of the y-axis range on the ratio
+    ##
+
+    # arrow props
+
+    # get indices for points outside y-axix
+    idx_ratio_up = ((ratio_y - ratio_data_err_low) > ratio_y_max) & (ratio_y > 0)
+    idx_ratio_dn = ((ratio_y + ratio_data_err_high) < ratio_y_min) & (ratio_y > 0)
+    x_vals_arrow_up = np.extract(idx_ratio_up, ratio_x)
+    x_vals_arrow_dn = np.extract(idx_ratio_dn, ratio_x)
+
+
+    arrow_transform = lower_pad.transAxes
+    for direction in [-1.0, 1.0] :
+        x_arrow = { -1.0 : x_vals_arrow_dn,
+                    1.0 : x_vals_arrow_up }[direction]
+        y_ratio_val = { -1.0 : ratio_y_min,
+                        1.0 : ratio_y_max }[direction]
+        arrow_length = 0.2
+        length = direction * arrow_length
+        head_width = 0.012 * (abs(x_hi - x_lo))
+        head_length = 0.045 * (abs(ratio_y_max - ratio_y_min))
+        y_arrow_pos = y_ratio_val + (-1.0 * direction) * 1.38 * arrow_length
+        for ix, x_arrow_pos in enumerate(x_arrow) :
+            arrow_opts = {"head_width" : head_width, "head_length" : head_length, "edgecolor" : "r", "facecolor" : "r", "linewidth" : 2.5, "zorder" : 1e9 }
+            lower_pad.arrow(x_arrow_pos, y_arrow_pos, 0, length, **arrow_opts)
 
     ##
     ## SM error on ratio
@@ -720,15 +1253,87 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
     if args.add_syst and is_variable_width :
         print "ERROR Systematics and variable bin widths are not yet implmeneted"
         sys.exit()
+
     if args.add_syst :
         syst_config_dir = "/data/uclhc/uci/user/dantrim/n0307val/dantrimania/python/analysis/wwbb/error_band/"
         syst_files = {}
+
         if plot_description.var_to_plot == "NN_d_hh" :
-            syst_files = { "crTop" : "%s/process_uncerts_NN_d_hh_crTop_paper.json" % syst_config_dir,
-                            "crZ" : "%s/process_uncerts_NN_d_hh_crZ_paper.json" % syst_config_dir,
-                            "srIncNoDhh" : "%s/process_uncerts_NN_d_hh_srIncNoDhh_paper.json" % syst_config_dir,
-                            "srSFNoDhhCloseCut" : "%s/process_uncerts_NN_d_hh_srSFNoDhhCloseCut_paper.json" % syst_config_dir,
-                            "srDFNoDhhCloseCut" : "%s/process_uncerts_NN_d_hh_srDFNoDhhCloseCut_paper.json" % syst_config_dir
+            #syst_files = { "crTop" : "%s/process_uncerts_NN_d_hh_crTop_paper.json" % syst_config_dir,
+            #                "crZ" : "%s/process_uncerts_NN_d_hh_crZ_paper.json" % syst_config_dir,
+            #                "vrTop" : "%s/process_uncerts_NN_d_hh_top_vr_paper.json" % syst_config_dir,
+            #                "vrZ" : "%s/process_uncerts_NN_d_hh_z_vr_paper.json" % syst_config_dir,
+            #                "srIncNoDhh" : "%s/process_uncerts_NN_d_hh_srIncNoDhh_paper.json" % syst_config_dir,
+            #                "srSFNoDhhCloseCut" : "%s/process_uncerts_NN_d_hh_srSFNoDhhCloseCut_paper.json" % syst_config_dir,
+            #                "srDFNoDhhCloseCut" : "%s/process_uncerts_NN_d_hh_srDFNoDhhCloseCut_paper.json" % syst_config_dir
+
+            #}
+            syst_files = {
+                "crTop" : "process_uncerts_NN_d_hh_top_cr_paper_may29.json"
+                ,"vrTop" : "process_uncerts_NN_d_hh_top_vr_paper_may29.json"
+                ,"crZ" : "process_uncerts_NN_d_hh_z_cr_paper_may29.json"
+                ,"vrZ" : "process_uncerts_NN_d_hh_z_vr_paper_may29.json"
+                ,"srIncNoDhh" : "process_uncerts_NN_d_hh_srIncNoDhh_paper_may29.json"
+                ,"srSFNoDhh" : "process_uncerts_NN_d_hh_srSFNoDhh_paper_may29.json"
+                ,"srDFNoDhh" : "process_uncerts_NN_d_hh_srDFNoDhh_paper_may29.json"
+                ,"srSFNoDhhCloseCut" : "process_uncerts_NN_d_hh_srSFNoDhhCloseCut_paper_may29.json"
+                ,"srDFNoDhhCloseCut" : "process_uncerts_NN_d_hh_srDFNoDhhCloseCut_paper_may29.json"
+            }
+
+        if plot_description.var_to_plot == "HT2Ratio" :
+            #syst_files = {
+            #    "srIncNoDhh" : "%s/process_uncerts_HT2Ratio_srIncNoDhh_paper.json" % syst_config_dir
+            #}
+            syst_files = {
+                "crTop" :   "process_uncerts_HT2Ratio_top_cr_paper_may29.json"
+                ,"vrTop" :  "process_uncerts_HT2Ratio_top_vr_paper_may29.json"
+                #,"crZ" :    "process_uncerts_HT2Ratio_z_cr_paper_may29.json"
+                ,"crZ" :    "process_uncerts_HT2Ratio_z_cr_paper_test.json"
+                ,"vrZ" :    "process_uncerts_HT2Ratio_z_vr_paper_may29.json"
+                ,"srIncNoDhh" : "process_uncerts_HT2Ratio_srIncNoDhh_paper_may29.json"
+                ,"srIncNoMbbDhh" : "process_uncerts_HT2Ratio_srIncNoMbbDhh_paper_may29.json"
+            }
+
+        if plot_description.var_to_plot == "dRll" :
+            #syst_files = {
+            #    "srIncNoDhh" : "%s/process_uncerts_dRll_srIncNoDhh_paper.json" % syst_config_dir
+            #}
+            syst_files = {
+                "crTop" :       "process_uncerts_dRll_top_cr_paper_may29.json"
+                ,"vrTop" :      "process_uncerts_dRll_top_vr_paper_may29.json"
+                ,"crZ" :        "process_uncerts_dRll_z_cr_paper_may29.json"
+                ,"vrZ" :        "process_uncerts_dRll_z_vr_paper_may29.json"
+                ,"srIncNoDhh" : "process_uncerts_dRll_srIncNoDhh_paper_may29.json"
+                ,
+            }
+
+        if plot_description.var_to_plot == "mt2_bb" :
+            syst_files = {
+                "crTop" :       "process_uncerts_mt2_bb_top_cr_paper_may29.json"
+                ,"vrTop" :      "process_uncerts_mt2_bb_top_vr_paper_may29.json"
+                ,"crZ" :        "process_uncerts_mt2_bb_z_cr_paper_may29.json"
+                ,"vrZ" :        "process_uncerts_mt2_bb_z_vr_paper_may29.json"
+                ,"srIncNoDhh" : "process_uncerts_mt2_bb_srIncNoDhh_paper_may29.json"
+                ,
+            }
+
+        if plot_description.var_to_plot == "dphi_ll" :
+            syst_files = {
+                "crTop" :       "process_uncerts_dphi_ll_top_cr_paper_may29.json"
+                ,"vrTop" :      "process_uncerts_dphi_ll_top_vr_paper_may29.json"
+                ,"crZ" :        "process_uncerts_dphi_ll_z_cr_paper_may29.json"
+                ,"vrZ" :        "process_uncerts_dphi_ll_z_vr_paper_may29.json"
+                ,"srIncNoDhh" : "process_uncerts_dphi_ll_srIncNoDhh_paper_may29.json"
+                ,
+            }
+        if plot_description.var_to_plot == "mbb" :
+            syst_files = {
+                "srIncNoMbbDhh" : "process_uncerts_mbb_srIncNoMbbDhh_paper_may29.json"
+                ,
+            }
+        if plot_description.var_to_plot == "mll" :
+            syst_files = {
+                "srIncNoMllDhh" : "process_uncerts_mll_srIncNoMllDhh_paper_may29.json"
             }
 
         syst_proc_names = { "TTbar" : "ttbar", "Wt" : "wt", "ZjetsHF" : "z" }
@@ -737,8 +1342,9 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
             process_fractions[process] = np.array(histograms_bkg[process].histogram / histo_total.histogram)
             neg_frac = process_fractions[process] < 0
             process_fractions[process][neg_frac] = 0
+
         if plot_description.region_name in syst_files :
-            json_file = syst_files[plot_description.region_name]
+            json_file = "%s/%s" % (syst_config_dir, syst_files[plot_description.region_name])
             with open(json_file, "r") as input_file :
                 syst_data = json.load(input_file)
             process_errors = {}
@@ -747,7 +1353,15 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                 for process in syst_proc_names :
                     for process_err_group in processes :
                         if process_err_group["name"] == syst_proc_names[process] :
+                            #if process_err_group["name"] == "ttbar" :
+                            #    print("SKIPPING TTBAR SYSTEMATICS IN ERROR BAR")
+                            #    continue
                             err = process_err_group["errors"]
+                            if process_err_group["name"] == "z" :
+                                print("Z err: %s" % err)
+                            if plot_description.var_to_plot == "dphi_ll" and plot_description.region_name == "srIncNoDhh" :
+                                print("WARNING Only using scale factor  uncertainties!")
+                                err = np.zeros(len(histo_total.histogram))
 
                             # add Top and Z+HF mu uncerts
                             if process_err_group["name"] == "ttbar" or process_err_group["name"] == "wt" :
@@ -763,7 +1377,19 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                 total_err += np.power(proc_err,2)
             total_err = np.sqrt(total_err)
 
+            # this is the fraction of the already-present error that the sytematic error is
+            syst_err_factor = total_err / sm_ratio_err
             sm_ratio_err = np.sqrt( np.power(sm_ratio_err,2) + np.power(total_err,2) )
+
+            ##
+            ## update the error band in the upper-pad
+            ##
+
+            # update the already-calculated stat-only errors
+            sm_y_error *= syst_err_factor
+            hist_error_band = errorbars.error_hatches(histo_total.bins[:-1], histo_total.histogram, \
+                sm_x_error, sm_y_error, hatch_bin_width)
+            upper_pad.add_collection(hist_error_band)
 
     ratio_error_band = errorbars.error_hatches(
         [xv - 0.5 * bin_width for xv in ratio_x],
@@ -795,7 +1421,8 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
             # add signal to legend (here we assume that there is only one signal sample provided)
 
             # label
-            signal_label = "SM $hh \\rightarrow bb\\ell\\nu\\ell\\nu$"
+            signal_label = "\\textit{HH} ($\\times$20)" 
+            #signal_label = "$hh \\rightarrow b\\bar{b}\\ell\\nu\\ell\\nu$" # ($\\times 20$)"
             y_text = leg_y - 0.04
             #x_text = leg_x + 0.15
             x_text = leg_x + 0.12
@@ -804,9 +1431,13 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                         fontsize = 14,
                         ha = "left"
             )
+            #upper_pad.text(x_text + 0.21, y_text + 0.0025, "($\\times 20$)",
+            #        transform = upper_pad.transAxes,
+            #        fontsize = 12, ha = "left"
+            #)
 
             # line
-            y_line = 1.02 * y_text
+            y_line = 1.03 * y_text
             #x_line_0 = leg_x + 0.007 
             #x_line_1 = leg_x + 0.08
             x_line_0 = leg_x + 0.0155
@@ -817,9 +1448,11 @@ def make_paper_plot(region, backgrounds, signals, data, plot_description, args) 
                 x_line_0 = leg_x + 0.016
                 x_line_1 = leg_x + 0.083
             upper_pad.plot([x_line_0, x_line_1], [y_line, y_line],
+                    #":",
                     "-",
                     lw = 2,
-                    color = signals[0].color,
+                    #color = "k", #signals[0].color,
+                    color = signal_color,
                     transform = upper_pad.transAxes
             )
 
@@ -851,6 +1484,9 @@ def main() :
     parser.add_argument("--plot", required = True,
         help = "Provide the plot description for the plot to make: <region>_<variable>"
     )
+    parser.add_argument("--abs", action = "store_true", default = False,
+        help = "Take the absolute value of the variable"
+    )
     parser.add_argument("--suffix", default = "",
         help = "Provide a suffix to append to any outputs"
     )
@@ -874,7 +1510,7 @@ def main() :
     if not utils.file_exists(args.config) :
         sys.exit()
 
-    plot_desc = PlotDescription(args.plot)
+    plot_desc = PlotDescription(args.plot, args.abs)
     if plot_desc.var_to_plot not in bounds_dict() :
         print "ERROR Requested variable (=%s) not configured in bounds dict" % plot_desc.var_to_plot
         sys.exit()
